@@ -39,10 +39,8 @@ func TestAccDataSourceFirewalls_basic(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.DataAll(t, firewallName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckResourceAttrGreaterThan(testFirewallDataName, "firewalls.#", 0),
-					),
 					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckResourceAttrGreaterThan(testFirewallDataName, "firewalls.#", 0),
 						statecheck.ExpectKnownValue(testFirewallDataName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
 						statecheck.ExpectKnownValue(testFirewallDataName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags"), knownvalue.NotNull()),
 						statecheck.ExpectKnownValue(
