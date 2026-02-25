@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/instancetypes/tmpl"
 )
@@ -21,22 +24,22 @@ func TestAccDataSourceInstanceTypes_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "types.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "types.0.id", "g6-standard-2"),
-					resource.TestCheckResourceAttr(resourceName, "types.0.label", "Linode 4GB"),
-					resource.TestCheckResourceAttr(resourceName, "types.0.class", "standard"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.disk"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.network_out"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.memory"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.transfer"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.vcpus"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.accelerated_devices"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.price.0.hourly"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.price.0.monthly"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.addons.0.backups.0.price.0.hourly"),
-					resource.TestCheckResourceAttrSet(resourceName, "types.0.addons.0.backups.0.price.0.monthly"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact("g6-standard-2")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Linode 4GB")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("class"), knownvalue.StringExact("standard")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("disk"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("network_out"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("memory"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("transfer"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("vcpus"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("accelerated_devices"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("hourly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("monthly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("hourly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("monthly"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
@@ -53,10 +56,10 @@ func TestAccDataSourceInstanceTypes_substring(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataSubstring(t),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "types.#", 1),
-					acceptance.CheckResourceAttrContains(resourceName, "types.0.label", "Linode"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "types.#", 1),
+					acceptance.StateCheckResourceAttrContains(resourceName, "types.0.label", "Linode"),
+				},
 			},
 		},
 	})
@@ -73,10 +76,10 @@ func TestAccDataSourceInstanceTypes_regex(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataRegex(t),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "types.#", 1),
-					acceptance.CheckResourceAttrContains(resourceName, "types.0.label", "Dedicated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "types.#", 1),
+					acceptance.StateCheckResourceAttrContains(resourceName, "types.0.label", "Dedicated"),
+				},
 			},
 		},
 	})
@@ -93,10 +96,10 @@ func TestAccDataSourceInstanceTypes_byClass(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataByClass(t),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "types.#", 0),
-					acceptance.CheckResourceAttrContains(resourceName, "types.0.label", "Linode"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "types.#", 0),
+					acceptance.StateCheckResourceAttrContains(resourceName, "types.0.label", "Linode"),
+				},
 			},
 		},
 	})
