@@ -10,7 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/placementgroupassignment/tmpl"
@@ -45,19 +48,19 @@ func TestAccResourcePlacementGroupAssignment_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, testRegion, true),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckInstanceExists(instanceName, &instance),
-					resource.TestCheckResourceAttrSet(assignmentName, "id"),
-					resource.TestCheckResourceAttrSet(assignmentName, "placement_group_id"),
-					resource.TestCheckResourceAttrSet(assignmentName, "linode_id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(instanceName, &instance),
+					statecheck.ExpectKnownValue(assignmentName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(assignmentName, tfjsonpath.New("placement_group_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(assignmentName, tfjsonpath.New("linode_id"), knownvalue.NotNull()),
+				},
 			},
 			// Refresh the plan and make sure the assignment exists under the PG
 			{
 				Config: tmpl.Basic(t, label, testRegion, true),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(pgName, "members.#", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(pgName, tfjsonpath.New("members"), knownvalue.SetSizeExact(1)),
+				},
 			},
 			// Attempt to import the assignment resource
 			{
@@ -73,9 +76,9 @@ func TestAccResourcePlacementGroupAssignment_basic(t *testing.T) {
 			// Refresh the plan and make sure the assignment does not exist under the PG
 			{
 				Config: tmpl.Basic(t, label, testRegion, false),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(pgName, "members.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(pgName, tfjsonpath.New("members"), knownvalue.SetSizeExact(0)),
+				},
 			},
 		},
 	})
