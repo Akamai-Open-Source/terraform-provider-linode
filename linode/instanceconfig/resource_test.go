@@ -45,10 +45,10 @@ func TestAccResourceInstanceConfig_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -67,15 +67,14 @@ func TestAccResourceInstanceConfig_deviceBlock(t *testing.T) {
 	instanceName := acctest.RandomWithPrefix("tf_test")
 	rootPass := acctest.RandString(64)
 
-	devicesCheck := resource.ComposeAggregateTestCheckFunc(
-		resource.TestCheckResourceAttrSet(resName, "devices.0.sda.0.disk_id"),
-		resource.TestCheckResourceAttrSet(resName, "devices.0.sdb.0.disk_id"),
-
-		resource.TestCheckResourceAttrSet(resName, "device.0.disk_id"),
-		resource.TestCheckResourceAttrSet(resName, "device.1.disk_id"),
-		resource.TestCheckResourceAttr(resName, "device.0.device_name", "sda"),
-		resource.TestCheckResourceAttr(resName, "device.1.device_name", "sdb"),
-	)
+	devicesStateChecks := []statecheck.StateCheck{
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sdb").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("device").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("device").AtSliceIndex(1).AtMapKey("disk_id"), knownvalue.NotNull()),
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("device").AtSliceIndex(0).AtMapKey("device_name"), knownvalue.StringExact("sda")),
+		statecheck.ExpectKnownValue(resName, tfjsonpath.New("device").AtSliceIndex(1).AtMapKey("device_name"), knownvalue.StringExact("sdb")),
+	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acceptance.PreCheck(t) },
@@ -86,35 +85,31 @@ func TestAccResourceInstanceConfig_deviceBlock(t *testing.T) {
 			// with the new `device` block.
 			{
 				Config: tmpl.DeviceBlock(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					devicesCheck,
-				),
+				ConfigStateChecks: append([]statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+				}, devicesStateChecks...),
 			},
 			{
 				Config: tmpl.DeviceNamedBlock(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					devicesCheck,
-				),
+				ConfigStateChecks: append([]statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+				}, devicesStateChecks...),
 			},
 			{
 				Config: tmpl.DeviceBlock(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					devicesCheck,
-				),
+				ConfigStateChecks: append([]statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+				}, devicesStateChecks...),
 			},
 			{
 				Config: tmpl.DeviceNamedBlock(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					devicesCheck,
-				),
+				ConfigStateChecks: append([]statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+				}, devicesStateChecks...),
 			},
 			{
 				ResourceName:      resName,
@@ -141,56 +136,56 @@ func TestAccResourceInstanceConfig_complex(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Complex(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					resource.TestCheckResourceAttr(resName, "comments", "cool"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("comments"), knownvalue.StringExact("cool")),
 
-					resource.TestCheckResourceAttr(resName, "helpers.0.devtmpfs_automount", "true"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.distro", "true"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.modules_dep", "true"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.network", "true"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.updatedb_disabled", "true"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("devtmpfs_automount"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("distro"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("modules_dep"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("network"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("updatedb_disabled"), knownvalue.StringExact("true")),
 
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "public"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
 
-					resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "memory_limit", "512"),
-					resource.TestCheckResourceAttr(resName, "root_device", "/dev/sda"),
-					resource.TestCheckResourceAttr(resName, "virt_mode", "paravirt"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("memory_limit"), knownvalue.StringExact("512")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("root_device"), knownvalue.StringExact("/dev/sda")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("virt_mode"), knownvalue.StringExact("paravirt")),
 
-					resource.TestCheckResourceAttr(resName, "booted", "true"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
 
-					resource.TestCheckResourceAttrSet(resName, "devices.0.sda.0.disk_id"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.ComplexUpdates(t, instanceName, testRegion, rootPass, true),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config-updated"),
-					resource.TestCheckResourceAttr(resName, "comments", "cool-updated"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config-updated")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("comments"), knownvalue.StringExact("cool-updated")),
 
-					resource.TestCheckResourceAttr(resName, "helpers.0.devtmpfs_automount", "false"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.distro", "false"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.modules_dep", "false"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.network", "false"),
-					resource.TestCheckResourceAttr(resName, "helpers.0.updatedb_disabled", "false"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("devtmpfs_automount"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("distro"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("modules_dep"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("network"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("helpers").AtSliceIndex(0).AtMapKey("updatedb_disabled"), knownvalue.StringExact("false")),
 
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "interface.0.label", "cooler"),
-					resource.TestCheckResourceAttr(resName, "interface.0.ipam_address", "10.0.0.3/24"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("cooler")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("ipam_address"), knownvalue.StringExact("10.0.0.3/24")),
 
-					resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-32bit"),
-					resource.TestCheckResourceAttr(resName, "memory_limit", "513"),
-					resource.TestCheckResourceAttr(resName, "root_device", "/dev/sdb"),
-					resource.TestCheckResourceAttr(resName, "virt_mode", "fullvirt"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("kernel"), knownvalue.StringExact("linode/latest-32bit")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("memory_limit"), knownvalue.StringExact("513")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("root_device"), knownvalue.StringExact("/dev/sdb")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("virt_mode"), knownvalue.StringExact("fullvirt")),
 
-					resource.TestCheckResourceAttr(resName, "booted", "true"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
 
-					resource.TestCheckResourceAttrSet(resName, "devices.0.sdb.0.disk_id"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sdb").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				PreConfig: acceptance.AssertInstanceReboot(t, true, &instance),
@@ -225,13 +220,13 @@ func TestAccResourceInstanceConfig_booted(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Booted(t, instanceName, testRegion, false, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					resource.TestCheckResourceAttr(resName, "booted", "false"),
-					resource.TestCheckResourceAttrSet(resName, "devices.0.sda.0.disk_id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -240,13 +235,13 @@ func TestAccResourceInstanceConfig_booted(t *testing.T) {
 					}
 				},
 				Config: tmpl.Booted(t, instanceName, testRegion, true, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					resource.TestCheckResourceAttr(resName, "booted", "true"),
-					resource.TestCheckResourceAttrSet(resName, "devices.0.sda.0.disk_id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -284,14 +279,13 @@ func TestAccResourceInstanceConfig_bootedSwap(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.BootedSwap(t, instanceName, testRegion, false, rootPass),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-						checkExists(config1Name, nil),
-						checkExists(config2Name, nil),
-
-						resource.TestCheckResourceAttr(config1Name, "booted", "false"),
-						resource.TestCheckResourceAttr(config2Name, "booted", "true"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+						stateCheckExists(config1Name, nil),
+						stateCheckExists(config2Name, nil),
+						statecheck.ExpectKnownValue(config1Name, tfjsonpath.New("booted"), knownvalue.StringExact("false")),
+						statecheck.ExpectKnownValue(config2Name, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
+					},
 				},
 				{
 					PreConfig: func() {
@@ -300,14 +294,13 @@ func TestAccResourceInstanceConfig_bootedSwap(t *testing.T) {
 						}
 					},
 					Config: tmpl.BootedSwap(t, instanceName, testRegion, true, rootPass),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-						checkExists(config1Name, nil),
-						checkExists(config2Name, nil),
-
-						resource.TestCheckResourceAttr(config1Name, "booted", "true"),
-						resource.TestCheckResourceAttr(config2Name, "booted", "false"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+						stateCheckExists(config1Name, nil),
+						stateCheckExists(config2Name, nil),
+						statecheck.ExpectKnownValue(config1Name, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
+						statecheck.ExpectKnownValue(config2Name, tfjsonpath.New("booted"), knownvalue.StringExact("false")),
+					},
 				},
 				{
 					PreConfig: func() {
@@ -338,12 +331,12 @@ func TestAccResourceInstanceConfig_provisioner(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Provisioner(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", "my-config"),
-					resource.TestCheckResourceAttr(resName, "booted", "true"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("my-config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -370,43 +363,43 @@ func TestAccResourceInstanceConfig_vpcInterface(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.VPCInterface(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "public"),
-					resource.TestCheckResourceAttr(resName, "interface.1.purpose", "vpc"),
-					resource.TestCheckResourceAttr(resName, "interface.1.ipv4.0.vpc", "10.0.4.250"),
-					resource.TestCheckResourceAttr(resName, "interface.1.ip_ranges.0", "10.0.4.101/32"),
-					resource.TestCheckResourceAttrSet(resName, "interface.1.ipv4.0.nat_1_1"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.StringExact("10.0.4.250")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("ip_ranges").AtSliceIndex(0), knownvalue.StringExact("10.0.4.101/32")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("nat_1_1"), knownvalue.NotNull()),
 
-					resource.TestCheckResourceAttr(networkDSName, "ipv4.0.public.0.vpc_nat_1_1.address", "10.0.4.250"),
-					resource.TestCheckResourceAttrSet(networkDSName, "ipv4.0.public.0.vpc_nat_1_1.vpc_id"),
-					resource.TestCheckResourceAttrSet(networkDSName, "ipv4.0.public.0.vpc_nat_1_1.subnet_id"),
-				),
+					statecheck.ExpectKnownValue(networkDSName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public").AtSliceIndex(0).AtMapKey("vpc_nat_1_1").AtMapKey("address"), knownvalue.StringExact("10.0.4.250")),
+					statecheck.ExpectKnownValue(networkDSName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public").AtSliceIndex(0).AtMapKey("vpc_nat_1_1").AtMapKey("vpc_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(networkDSName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public").AtSliceIndex(0).AtMapKey("vpc_nat_1_1").AtMapKey("subnet_id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.VPCInterfaceUpdated(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "public"),
-					resource.TestCheckResourceAttr(resName, "interface.1.purpose", "vpc"),
-					resource.TestCheckResourceAttr(resName, "interface.1.ipv4.0.vpc", "10.0.4.249"),
-					resource.TestCheckResourceAttr(resName, "interface.1.active", "false"),
-					resource.TestCheckResourceAttr(resName, "interface.1.ip_ranges.0", "10.0.4.100/32"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.StringExact("10.0.4.249")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("active"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("ip_ranges").AtSliceIndex(0), knownvalue.StringExact("10.0.4.100/32")),
 
-					resource.TestCheckResourceAttr(networkDSName, "ipv4.0.public.0.vpc_nat_1_1.#", "0"),
-				),
+					statecheck.ExpectKnownValue(networkDSName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public").AtSliceIndex(0).AtMapKey("vpc_nat_1_1"), knownvalue.ListSizeExact(0)),
+				},
 			},
 			{
 				Config: tmpl.VPCInterfaceSwapped(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "interface.#", "2"),
-					resource.TestCheckResourceAttr(resName, "interface.1.purpose", "public"),
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "vpc"),
-					resource.TestCheckResourceAttr(resName, "interface.0.ipv4.0.vpc", "10.0.4.249"),
-					resource.TestCheckResourceAttr(resName, "interface.0.active", "false"),
-					resource.TestCheckResourceAttr(resName, "interface.0.ip_ranges.0", "10.0.4.100/32"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("public")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.StringExact("10.0.4.249")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("active"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("ip_ranges").AtSliceIndex(0), knownvalue.StringExact("10.0.4.100/32")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -416,14 +409,14 @@ func TestAccResourceInstanceConfig_vpcInterface(t *testing.T) {
 			},
 			{
 				Config: tmpl.VPCInterfaceOnly(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "vpc"),
-					resource.TestCheckResourceAttr(resName, "interface.0.ipv4.0.vpc", "10.0.4.249"),
-					resource.TestCheckResourceAttr(resName, "interface.0.active", "false"),
-					resource.TestCheckResourceAttr(resName, "interface.0.ip_ranges.0", "10.0.4.100/32"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.StringExact("10.0.4.249")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("active"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("ip_ranges").AtSliceIndex(0), knownvalue.StringExact("10.0.4.100/32")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -433,11 +426,11 @@ func TestAccResourceInstanceConfig_vpcInterface(t *testing.T) {
 			},
 			{
 				Config: tmpl.VPCInterfaceRemoved(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "interface.0.purpose", "public"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -469,10 +462,10 @@ func TestAccResourceInstanceConfig_rescueBooted(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Complex(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					acceptance.CheckInstanceExists(instanceResName, &instance),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					acceptance.StateCheckInstanceExists(instanceResName, &instance),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -495,23 +488,21 @@ func TestAccResourceInstanceConfig_rescueBooted(t *testing.T) {
 					}
 				},
 				Config: tmpl.ComplexUpdates(t, instanceName, testRegion, rootPass, false),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					acceptance.CheckInstanceExists(instanceResName, &instance),
-
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					acceptance.StateCheckInstanceExists(instanceResName, &instance),
 					// The provider should not be booted into this config
-					resource.TestCheckResourceAttr(resName, "booted", "false"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("false")),
+				},
 			},
 			{
 				Config: tmpl.Complex(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkExists(resName, nil),
-					acceptance.CheckInstanceExists(instanceResName, &instance),
-
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
+					acceptance.StateCheckInstanceExists(instanceResName, &instance),
 					// The provider should now have been rebooted into this config
-					resource.TestCheckResourceAttr(resName, "booted", "true"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("booted"), knownvalue.StringExact("true")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -547,8 +538,8 @@ func TestAccResourceInstanceConfig_vpcInterfaceIPv6(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.VPCInterfaceIPv60(t, instanceName, targetRegion, rootPass),
-				Check:  checkExists(resName, nil),
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("interface"),
@@ -634,8 +625,8 @@ func TestAccResourceInstanceConfig_vpcInterfaceIPv6(t *testing.T) {
 			},
 			{
 				Config: tmpl.VPCInterfaceIPv61(t, instanceName, targetRegion, rootPass),
-				Check:  checkExists(resName, nil),
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("interface"),
@@ -732,8 +723,8 @@ func TestAccResourceInstanceConfig_vpcInterfaceIPv6(t *testing.T) {
 			},
 			{
 				Config: tmpl.VPCInterfaceIPv61(t, instanceName, targetRegion, rootPass),
-				Check:  checkExists(resName, nil),
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckExists(resName, nil),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("interface"),
@@ -874,6 +865,62 @@ func checkExists(name string, config *linodego.InstanceConfig) resource.TestChec
 
 		return nil
 	}
+}
+
+func stateCheckExists(name string, config *linodego.InstanceConfig) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		// Find the resource in tfjson state
+		var found bool
+		var idStr, linodeIDStr string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				found = true
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok || idVal == nil {
+					resp.Error = fmt.Errorf("No ID is set")
+					return
+				}
+				idStr = fmt.Sprintf("%v", idVal)
+
+				lidVal, ok := rc.AttributeValues["linode_id"]
+				if !ok || lidVal == nil {
+					resp.Error = fmt.Errorf("No linode_id is set")
+					return
+				}
+				linodeIDStr = fmt.Sprintf("%v", lidVal)
+				break
+			}
+		}
+
+		if !found {
+			resp.Error = fmt.Errorf("Not found: %s", name)
+			return
+		}
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to parse config ID: %v", err)
+			return
+		}
+
+		linodeID, err := strconv.Atoi(linodeIDStr)
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to parse linode_id: %v", err)
+			return
+		}
+
+		foundConfig, err := client.GetInstanceConfig(context.Background(), linodeID, id)
+		if err != nil {
+			resp.Error = fmt.Errorf("error retrieving state of config: %s", err)
+			return
+		}
+
+		if config != nil {
+			*config = *foundConfig
+		}
+	})
 }
 
 func checkDestroy(s *terraform.State) error {
