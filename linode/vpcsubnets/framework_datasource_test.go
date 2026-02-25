@@ -46,10 +46,8 @@ func TestAccDataSourceVPCSubnets_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, vpcLabel, testRegion, "10.0.0.0/24"),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "vpc_subnets.#", 0),
-				),
 				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "vpc_subnets.#", 0),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vpc_subnets").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vpc_subnets").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vpc_subnets").AtSliceIndex(0).AtMapKey("ipv4"), knownvalue.NotNull()),
@@ -173,10 +171,8 @@ func TestAccDataSourceVPCSubnets_filterByLabel(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataFilterLabel(t, vpcLabel, testRegion, "10.0.0.0/24"),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "vpc_subnets.#", 0),
-				),
 				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "vpc_subnets.#", 0),
 					statecheck.ExpectKnownValue(
 						resourceName,
 						tfjsonpath.New("vpc_subnets").AtSliceIndex(0).AtMapKey("label"),
