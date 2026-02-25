@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/ipv6ranges/tmpl"
 )
@@ -36,13 +39,13 @@ func TestAccDataSourceIPv6Ranges_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, instanceLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSourceName, "ranges.#", "1"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "ranges.0.range"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "ranges.0.route_target"),
-					resource.TestCheckResourceAttr(dataSourceName, "ranges.0.region", testRegion),
-					resource.TestCheckResourceAttr(dataSourceName, "ranges.0.prefix", "64"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("ranges"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("ranges").AtSliceIndex(0).AtMapKey("range"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("ranges").AtSliceIndex(0).AtMapKey("route_target"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("ranges").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("ranges").AtSliceIndex(0).AtMapKey("prefix"), knownvalue.Int64Exact(64)),
+				},
 			},
 		},
 	})
