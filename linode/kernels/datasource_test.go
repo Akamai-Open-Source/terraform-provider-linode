@@ -3,9 +3,13 @@
 package kernels_test
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/kernels/tmpl"
 )
@@ -23,34 +27,34 @@ func TestAccDataSourceKernels_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, kernelID),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.id", kernelID),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.architecture"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.deprecated"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.kvm"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.label"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.pvops"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.version"),
-					resource.TestCheckResourceAttrSet(resourceName, "kernels.0.xen"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact(kernelID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("architecture"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("kvm"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("pvops"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("version"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("xen"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.DataFilter(t, kernelID),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "kernels.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.id", kernelID),
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.architecture", "x86_64"),
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.deprecated", "false"),
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.kvm", "true"),
-					resource.TestCheckResourceAttr(resourceName, "kernels.0.pvops", "true"),
-					acceptance.CheckResourceAttrContains(resourceName, "kernels.0.label", "Latest 64 bit"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact(kernelID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("architecture"), knownvalue.StringExact("x86_64")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("deprecated"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("kvm"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("pvops"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringRegexp(regexp.MustCompile("Latest 64 bit"))),
+				},
 			},
 			{
 				Config: tmpl.DataFilterEmpty(t, kernelID),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "kernels.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kernels"), knownvalue.ListSizeExact(0)),
+				},
 			},
 		},
 	})
