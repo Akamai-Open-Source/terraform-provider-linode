@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/profile/tmpl"
 )
@@ -21,21 +24,21 @@ func TestAccDataSourceProfile_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "email"),
-					resource.TestCheckResourceAttrSet(resourceName, "timezone"),
-					resource.TestCheckResourceAttrSet(resourceName, "username"),
-					resource.TestCheckResourceAttrSet(resourceName, "email_notifications"),
-					resource.TestCheckResourceAttrSet(resourceName, "ip_whitelist_enabled"),
-					resource.TestCheckResourceAttrSet(resourceName, "lish_auth_method"),
-					resource.TestCheckResourceAttrSet(resourceName, "restricted"),
-					resource.TestCheckResourceAttrSet(resourceName, "two_factor_auth"),
-					resource.TestCheckResourceAttrSet(resourceName, "referrals.0.total"),
-					resource.TestCheckResourceAttrSet(resourceName, "referrals.0.credit"),
-					resource.TestCheckResourceAttrSet(resourceName, "referrals.0.completed"),
-					resource.TestCheckResourceAttrSet(resourceName, "referrals.0.pending"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("email"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("timezone"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("username"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("email_notifications"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("ip_whitelist_enabled"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("lish_auth_method"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("restricted"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("two_factor_auth"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("referrals").AtSliceIndex(0).AtMapKey("total"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("referrals").AtSliceIndex(0).AtMapKey("credit"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("referrals").AtSliceIndex(0).AtMapKey("completed"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("referrals").AtSliceIndex(0).AtMapKey("pending"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
