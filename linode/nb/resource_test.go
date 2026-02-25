@@ -92,21 +92,20 @@ func TestAccResourceNodeBalancer_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, nodebalancerName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerExists,
-					resource.TestCheckResourceAttr(resName, "label", nodebalancerName),
-					resource.TestCheckResourceAttr(resName, "client_conn_throttle", "20"),
-					resource.TestCheckResourceAttr(resName, "client_udp_sess_throttle", "10"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-					resource.TestCheckResourceAttrSet(resName, "hostname"),
-					resource.TestCheckResourceAttrSet(resName, "ipv4"),
-					resource.TestCheckResourceAttrSet(resName, "ipv6"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodebalancerName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("20")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_udp_sess_throttle"), knownvalue.StringExact("10")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv4"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+				},
 			},
 
 			{
@@ -133,40 +132,38 @@ func TestAccResourceNodeBalancer_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, nodebalancerName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerExists,
-					resource.TestCheckResourceAttr(resName, "label", nodebalancerName),
-					resource.TestCheckResourceAttr(resName, "client_conn_throttle", "20"),
-					resource.TestCheckResourceAttr(resName, "client_udp_sess_throttle", "10"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-					resource.TestCheckResourceAttrSet(resName, "hostname"),
-					resource.TestCheckResourceAttrSet(resName, "ipv4"),
-					resource.TestCheckResourceAttrSet(resName, "ipv6"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodebalancerName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("20")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_udp_sess_throttle"), knownvalue.StringExact("10")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv4"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, nodebalancerName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerExists,
-					resource.TestCheckResourceAttr(resName, "label", nodebalancerName+"_r"),
-					resource.TestCheckResourceAttr(resName, "client_conn_throttle", "0"),
-					resource.TestCheckResourceAttr(resName, "client_udp_sess_throttle", "5"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-					resource.TestCheckResourceAttrSet(resName, "hostname"),
-					resource.TestCheckResourceAttrSet(resName, "ipv4"),
-					resource.TestCheckResourceAttrSet(resName, "ipv6"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "tags.1", "tf_test_2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodebalancerName+"_r")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_udp_sess_throttle"), knownvalue.StringExact("5")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv4"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(1), knownvalue.StringExact("tf_test_2")),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -192,43 +189,43 @@ func TestAccResourceNodeBalancer_firewall(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Firewall(t, nodebalancerName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerExists,
-					resource.TestCheckResourceAttr(resName, "label", nodebalancerName),
-					resource.TestCheckResourceAttr(resName, "client_conn_throttle", "20"),
-					acceptance.CheckResourceAttrGreaterThan(resName, "firewalls.#", 0),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.label", fmt.Sprintf("%v-fw", nodebalancerName)),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound_policy", "DROP"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.action", "ACCEPT"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.protocol", "TCP"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.ports", "80"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.ipv4.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.ipv4.0", "0.0.0.0/0"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.ipv6.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.inbound.0.ipv6.0", "::/0"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound_policy", "DROP"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.protocol", "TCP"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.ports", "80"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.ipv4.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.ipv4.0", "0.0.0.0/0"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.ipv6.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.outbound.0.ipv6.0", "2001:db8::/32"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "firewalls.0.tags.0", "test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodebalancerName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("20")),
+					acceptance.StateCheckResourceAttrGreaterThan(resName, "firewalls.#", 0),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(fmt.Sprintf("%v-fw", nodebalancerName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound_policy"), knownvalue.StringExact("DROP")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("action"), knownvalue.StringExact("ACCEPT")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("protocol"), knownvalue.StringExact("TCP")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("ports"), knownvalue.StringExact("80")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("ipv4"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0), knownvalue.StringExact("0.0.0.0/0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("ipv6"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("inbound").AtSliceIndex(0).AtMapKey("ipv6").AtSliceIndex(0), knownvalue.StringExact("::/0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound_policy"), knownvalue.StringExact("DROP")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("protocol"), knownvalue.StringExact("TCP")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ports"), knownvalue.StringExact("80")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv4"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0), knownvalue.StringExact("0.0.0.0/0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv6"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv6").AtSliceIndex(0), knownvalue.StringExact("2001:db8::/32")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags").AtSliceIndex(0), knownvalue.StringExact("test")),
+				},
 			},
 			{
 				Config: tmpl.FirewallUpdate(t, nodebalancerName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_r", nodebalancerName)),
-					resource.TestCheckResourceAttr(resName, "client_conn_throttle", "0"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "tags.1", "tf_test_2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_r", nodebalancerName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(1), knownvalue.StringExact("tf_test_2")),
+				},
 			},
 		},
 	})
@@ -253,8 +250,8 @@ func TestAccResourceNodeBalancer_vpc(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.VPC(t, nodebalancerName, targetRegion),
-				Check:  checkNodeBalancerExists,
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerExists(),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("id"),
@@ -360,6 +357,35 @@ func TestLinodeNodeBalancer_UpgradeV0Empty(t *testing.T) {
 	if !reflect.DeepEqual(desiredState, newState) {
 		t.Fatalf("expected %v, got %v", desiredState, newState)
 	}
+}
+
+func stateCheckNodeBalancerExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_nodebalancer" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			_, err = client.GetNodeBalancer(context.Background(), id)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error retrieving state of NodeBalancer: %s", err)
+				return
+			}
+		}
+	})
 }
 
 func checkNodeBalancerExists(s *terraform.State) error {
