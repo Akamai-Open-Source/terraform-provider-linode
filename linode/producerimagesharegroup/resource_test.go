@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/producerimagesharegroup/tmpl"
 )
@@ -24,18 +27,18 @@ func TestAccResourceImageShareGroup_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, description),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", label),
-					resource.TestCheckResourceAttr(resourceName, "description", description),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "0"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "created"),
-					resource.TestCheckNoResourceAttr(resourceName, "updated"),
-					resource.TestCheckNoResourceAttr(resourceName, "expiry"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(label)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(description)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("updated"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("expiry"), knownvalue.Null()),
+				},
 			},
 		},
 	})
@@ -93,79 +96,79 @@ func TestAccResourceImageShareGroup_updates(t *testing.T) {
 			// Step 1: Create empty share group
 			{
 				Config: tmpl.Updates(t, label, testRegion, imageLabel1, imageLabel2, isgLabel, isgDescription, nil),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", isgLabel),
-					resource.TestCheckResourceAttr(resourceName, "description", isgDescription),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "0"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(isgLabel)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(isgDescription)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+				},
 			},
 			// Step 2: Add first image
 			{
 				Config: tmpl.Updates(t, label, testRegion, imageLabel1, imageLabel2, isgLabel, isgDescription, imagesStep2),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", isgLabel),
-					resource.TestCheckResourceAttr(resourceName, "description", isgDescription),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "1"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.id"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.label", "Share-Image-1"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.description", "Share Image 1 Description"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(isgLabel)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(isgDescription)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("1")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Share-Image-1")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("Share Image 1 Description")),
+				},
 			},
 			// Step 3: Add second image and update first image
 			{
 				Config: tmpl.Updates(t, label, testRegion, imageLabel1, imageLabel2, isgLabel, isgDescription, imagesStep3),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", isgLabel),
-					resource.TestCheckResourceAttr(resourceName, "description", isgDescription),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "2"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.id"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.label", "Share-Image-1-updated"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.description", "Share Image 1 Description updated"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.id"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.label", "Share-Image-2"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.description", "Share Image 2 Description"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(isgLabel)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(isgDescription)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("2")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Share-Image-1-updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("Share Image 1 Description updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact("Share-Image-2")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("description"), knownvalue.StringExact("Share Image 2 Description")),
+				},
 			},
 			// Step 4: Update the Share Group and remove the second image
 			{
 				Config: tmpl.Updates(t, label, testRegion, imageLabel1, imageLabel2, isgLabelUpdated, isgDescriptionUpdated, imagesStep4),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", isgLabel+"-updated"),
-					resource.TestCheckResourceAttr(resourceName, "description", isgDescription+" updated"),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "1"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.id"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.label", "Share-Image-1-updated"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.description", "Share Image 1 Description updated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(isgLabel+"-updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(isgDescription+" updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("1")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Share-Image-1-updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("Share Image 1 Description updated")),
+				},
 			},
 			// Step 5: Remove the first image
 			{
 				Config: tmpl.Updates(t, label, testRegion, imageLabel1, imageLabel2, isgLabelUpdated, isgDescriptionUpdated, nil),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "uuid"),
-					resource.TestCheckResourceAttr(resourceName, "label", isgLabel+"-updated"),
-					resource.TestCheckResourceAttr(resourceName, "description", isgDescription+" updated"),
-					resource.TestCheckResourceAttr(resourceName, "is_suspended", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images_count", "0"),
-					resource.TestCheckResourceAttr(resourceName, "members_count", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(isgLabel+"-updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact(isgDescription+" updated")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_suspended"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("members_count"), knownvalue.StringExact("0")),
+				},
 			},
 		},
 	})
