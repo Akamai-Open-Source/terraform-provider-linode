@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/stackscript/tmpl"
 )
@@ -27,27 +30,27 @@ func TestAccDataSourceStackscript_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, basicStackScript),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttrSet(resourceName, "deployments_active"),
-					resource.TestCheckResourceAttrSet(resourceName, "deployments_total"),
-					resource.TestCheckResourceAttrSet(resourceName, "username"),
-					resource.TestCheckResourceAttrSet(resourceName, "created"),
-					resource.TestCheckResourceAttrSet(resourceName, "updated"),
-					resource.TestCheckResourceAttr(resourceName, "label", "my_stackscript"),
-					resource.TestCheckResourceAttr(resourceName, "description", "test"),
-					resource.TestCheckResourceAttr(resourceName, "is_public", "false"),
-					resource.TestCheckResourceAttr(resourceName, "rev_note", "initial"),
-					resource.TestCheckResourceAttr(resourceName, "script", basicStackScript),
-					resource.TestCheckResourceAttr(resourceName, "images.#", "2"),
-					acceptance.CheckListContains(resourceName, "images", "linode/ubuntu24.04"),
-					acceptance.CheckListContains(resourceName, "images", "linode/ubuntu22.04"),
-					resource.TestCheckResourceAttr(resourceName, "user_defined_fields.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "user_defined_fields.0.name", "name"),
-					resource.TestCheckResourceAttr(resourceName, "user_defined_fields.0.label", "Your name"),
-					resource.TestCheckResourceAttr(resourceName, "user_defined_fields.0.default", "user"),
-					resource.TestCheckResourceAttr(resourceName, "user_defined_fields.0.example", "Linus Torvalds"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("deployments_active"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("deployments_total"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("username"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("updated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact("my_stackscript")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("description"), knownvalue.StringExact("test")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("rev_note"), knownvalue.StringExact("initial")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("script"), knownvalue.StringExact(basicStackScript)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(2)),
+					acceptance.StateCheckListContains(resourceName, "images", "linode/ubuntu24.04"),
+					acceptance.StateCheckListContains(resourceName, "images", "linode/ubuntu22.04"),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_defined_fields"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("name"), knownvalue.StringExact("name")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Your name")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("default"), knownvalue.StringExact("user")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("example"), knownvalue.StringExact("Linus Torvalds")),
+				},
 			},
 		},
 	})
