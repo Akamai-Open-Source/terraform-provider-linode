@@ -11,7 +11,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -42,17 +45,48 @@ func TestAccResourceNetworkingIPsAssign(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.NetworkingIPsAssign(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "region"),
-					resource.TestCheckResourceAttrSet(resourceName, "assignments.#"),
-					func(*terraform.State) error {
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("region"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("assignments"), knownvalue.NotNull()),
+					acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 						time.Sleep(30 * time.Second) // Add a delay to allow for API propagation
-						return nil
-					},
-					checkNetworkingIPsAssignExists,
-					resource.TestCheckResourceAttrSet(resourceName, "assignments.0.linode_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "assignments.0.address"),
-				),
+					}),
+					acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+						client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+						for _, rc := range req.State.Values.RootModule.Resources {
+							if rc.Type != "linode_networking_assign_ip" {
+								continue
+							}
+
+							regionVal, ok := rc.AttributeValues["region"]
+							if !ok {
+								continue
+							}
+
+							filter := fmt.Sprintf(`{"region": "%s"}`, regionVal.(string))
+							ips, err := client.ListIPAddresses(context.Background(), &linodego.ListOptions{Filter: filter})
+							if err != nil {
+								resp.Error = fmt.Errorf("Error listing IP addresses: %s", err)
+								return
+							}
+
+							assignmentCount := 0
+							for _, ip := range ips {
+								if ip.LinodeID != 0 {
+									assignmentCount++
+								}
+							}
+
+							if assignmentCount == 0 {
+								resp.Error = fmt.Errorf("No IP assignments found")
+								return
+							}
+						}
+					}),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("assignments").AtSliceIndex(0).AtMapKey("linode_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("assignments").AtSliceIndex(0).AtMapKey("address"), knownvalue.NotNull()),
+				},
 			},
 			// Removed ImportState step as it's no longer supported
 		},
