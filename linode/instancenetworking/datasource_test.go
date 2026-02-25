@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/instancenetworking/tmpl"
@@ -42,16 +45,16 @@ func TestAccDataSourceInstanceNetworking_basic(t *testing.T) {
 			},
 			{
 				Config: tmpl.DataBasic(t, name, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.private.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.public.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.reserved.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.shared.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.global.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.link_local.%"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.slaac.%"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("private"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("reserved"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("shared"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("global"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("link_local"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("slaac"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
@@ -72,10 +75,10 @@ func TestAccDataSourceInstanceNetworking_vpc(t *testing.T) {
 			},
 			{
 				Config: tmpl.DataVPC(t, name, testRegion, "10.0.0.0/24", instanceVPCIP),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.vpc.#"),
-					resource.TestCheckResourceAttr(testInstanceNetworkResName, "ipv4.0.vpc.0.address", instanceVPCIP),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("vpc").AtSliceIndex(0).AtMapKey("address"), knownvalue.StringExact(instanceVPCIP)),
+				},
 			},
 		},
 	})
@@ -97,16 +100,16 @@ func TestAccDataSourceInstanceNetworking_basicwithReseved(t *testing.T) {
 			},
 			{
 				Config: tmpl.DataBasic_withReservedField(t, name, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.private.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.public.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.reserved.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv4.0.shared.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.global.#"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.link_local.%"),
-					resource.TestCheckResourceAttrSet(testInstanceNetworkResName, "ipv6.0.slaac.%"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("private"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("public"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("reserved"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv4").AtSliceIndex(0).AtMapKey("shared"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("global"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("link_local"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceNetworkResName, tfjsonpath.New("ipv6").AtSliceIndex(0).AtMapKey("slaac"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
