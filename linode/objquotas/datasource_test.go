@@ -26,13 +26,12 @@ func TestAccDataSourceObjQuotas_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					// List all object storage quotas
-					acceptance.CheckResourceAttrGreaterThan(dsAll, "quotas.#", 2),
-					// Filter and list object storage quotas match the endpoint type: E0
-					acceptance.CheckResourceAttrGreaterThan(dsByEndpointType, "quotas.#", 2),
-				),
 				ConfigStateChecks: []statecheck.StateCheck{
+					// List all object storage quotas
+					acceptance.StateCheckResourceAttrGreaterThan(dsAll, "quotas.#", 2),
+					// Filter and list object storage quotas match the endpoint type: E0
+					acceptance.StateCheckResourceAttrGreaterThan(dsByEndpointType, "quotas.#", 2),
+
 					// Check the first element of the Object Storage quotas
 					statecheck.ExpectKnownValue(
 						dsAll,
