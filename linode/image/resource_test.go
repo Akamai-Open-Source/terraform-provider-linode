@@ -12,7 +12,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -112,25 +115,22 @@ func TestAccImage_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, imageName, testRegion, label, "test-tag"),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", imageName),
-					resource.TestCheckResourceAttr(resName, "description", "descriptive text"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "created_by"),
-					resource.TestCheckResourceAttrSet(resName, "size"),
-					resource.TestCheckResourceAttr(resName, "type", "manual"),
-					resource.TestCheckResourceAttr(resName, "is_public", "false"),
-					resource.TestCheckResourceAttr(resName, "is_shared", "false"),
-					resource.TestCheckResourceAttr(resName, "image_sharing.shared_with.sharegroup_count", "0"),
-					resource.TestCheckResourceAttrSet(
-						resName,
-						"image_sharing.shared_with.sharegroup_list_url",
-					),
-					resource.TestCheckResourceAttr(resName, "capabilities.0", "cloud-init"),
-					resource.TestCheckResourceAttrSet(resName, "deprecated"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("descriptive text")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("manual")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_shared"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_list_url"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("capabilities").AtSliceIndex(0), knownvalue.StringExact("cloud-init")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+				},
 			},
 			{
 				ResourceName: resName,
@@ -157,30 +157,30 @@ func TestAccImage_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, imageName, testRegion, label, "test-tag"),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", imageName),
-					resource.TestCheckResourceAttr(resName, "description", "descriptive text"),
-					resource.TestCheckResourceAttrSet(resName, "capabilities.#"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "test-tag"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("descriptive text")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("capabilities"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("test-tag")),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, imageName, testRegion, label, "updated-tag"),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, nil),
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_renamed", imageName)),
-					resource.TestCheckResourceAttr(resName, "description", "more descriptive text"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "created_by"),
-					resource.TestCheckResourceAttrSet(resName, "size"),
-					resource.TestCheckResourceAttr(resName, "type", "manual"),
-					resource.TestCheckResourceAttr(resName, "is_public", "false"),
-					resource.TestCheckResourceAttrSet(resName, "deprecated"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "updated-tag"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, nil),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_renamed", imageName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("more descriptive text")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("manual")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("updated-tag")),
+				},
 			},
 			{
 				ResourceName: resName,
@@ -213,30 +213,30 @@ func TestAccImage_uploadFile(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Upload(t, imageName, file.Name(), testRegion, "test-tag"),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, &image),
-					resource.TestCheckResourceAttr(resName, "label", imageName),
-					resource.TestCheckResourceAttr(resName, "description", "really descriptive text"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "created_by"),
-					resource.TestCheckResourceAttrSet(resName, "size"),
-					resource.TestCheckResourceAttr(resName, "type", "manual"),
-					resource.TestCheckResourceAttr(resName, "is_public", "false"),
-					resource.TestCheckResourceAttrSet(resName, "deprecated"),
-					resource.TestCheckResourceAttr(resName, "file_hash", testImageMD5),
-					resource.TestCheckResourceAttr(resName, "status", string(linodego.ImageStatusAvailable)),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, &image),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("really descriptive text")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("manual")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("file_hash"), knownvalue.StringExact(testImageMD5)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact(string(linodego.ImageStatusAvailable))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+				},
 			},
 			{
 				PreConfig: func() {
 					file.Write(testImageBytesNew)
 				},
 				Config: tmpl.Upload(t, imageName, file.Name(), testRegion, "test-tag"),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, &image),
-					resource.TestCheckResourceAttr(resName, "status", string(linodego.ImageStatusAvailable)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, &image),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact(string(linodego.ImageStatusAvailable))),
+				},
 			},
 		},
 	})
@@ -267,20 +267,20 @@ func TestAccImage_replicate(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Replicate(t, imageName, file.Name(), testRegion, testRegions[0]),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, &image),
-					resource.TestCheckResourceAttr(resName, "label", imageName),
-					resource.TestCheckResourceAttr(resName, "replications.#", "2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, &image),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("replications"), knownvalue.ListSizeExact(2)),
+				},
 			},
 			{
 				// Remove the one of the available region and replicate the image in a new region
 				Config: tmpl.Replicate(t, imageName, file.Name(), testRegion, testRegions[2]),
-				Check: resource.ComposeTestCheckFunc(
-					checkImageExists(resName, &image),
-					resource.TestCheckResourceAttr(resName, "label", imageName),
-					resource.TestCheckResourceAttr(resName, "replications.#", "2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckImageExists(resName, &image),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("replications"), knownvalue.ListSizeExact(2)),
+				},
 			},
 			{
 				// Remove all available region and replicate the image in new regions
@@ -322,6 +322,40 @@ func checkImageExists(name string, image *linodego.Image) resource.TestCheckFunc
 
 		return nil
 	}
+}
+
+func stateCheckImageExists(name string, image *linodego.Image) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("no ID is set")
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("not found: %s", name)
+			return
+		}
+
+		found, err := client.GetImage(context.Background(), resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to retrieve state of image %s: %s", resourceID, err)
+			return
+		}
+
+		if image != nil {
+			*image = *found
+		}
+	})
 }
 
 func checkImageDestroy(s *terraform.State) error {
