@@ -10,7 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -61,12 +64,12 @@ func TestAccResourceSSHKey_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, sshkeyName, acceptance.PublicKeyMaterial),
-				Check: resource.ComposeTestCheckFunc(
-					checkSSHKeyExists,
-					resource.TestCheckResourceAttr(resName, "label", sshkeyName),
-					resource.TestCheckResourceAttr(resName, "ssh_key", acceptance.PublicKeyMaterial),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckSSHKeyExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(sshkeyName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ssh_key"), knownvalue.StringExact(acceptance.PublicKeyMaterial)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+				},
 			},
 
 			{
@@ -91,10 +94,10 @@ func TestAccResourceSSHKey_space_in_label(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, sshkeyName, acceptance.PublicKeyMaterial),
-				Check: resource.ComposeTestCheckFunc(
-					checkSSHKeyExists,
-					resource.TestCheckResourceAttr(resName, "label", sshkeyName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckSSHKeyExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(sshkeyName)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -117,21 +120,21 @@ func TestAccResourceSSHKey_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, sshkeyName, acceptance.PublicKeyMaterial),
-				Check: resource.ComposeTestCheckFunc(
-					checkSSHKeyExists,
-					resource.TestCheckResourceAttr(resName, "label", sshkeyName),
-					resource.TestCheckResourceAttr(resName, "ssh_key", acceptance.PublicKeyMaterial),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckSSHKeyExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(sshkeyName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ssh_key"), knownvalue.StringExact(acceptance.PublicKeyMaterial)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, sshkeyName, acceptance.PublicKeyMaterial),
-				Check: resource.ComposeTestCheckFunc(
-					checkSSHKeyExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_renamed", sshkeyName)),
-					resource.TestCheckResourceAttr(resName, "ssh_key", acceptance.PublicKeyMaterial),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckSSHKeyExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_renamed", sshkeyName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ssh_key"), knownvalue.StringExact(acceptance.PublicKeyMaterial)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -162,6 +165,37 @@ func checkSSHKeyExists(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func stateCheckSSHKeyExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_sshkey" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			_, err = client.GetSSHKey(context.Background(), id)
+			if err != nil {
+				label, _ := rc.AttributeValues["label"].(string)
+				resp.Error = fmt.Errorf("Error retrieving state of SSHKey %s: %s", label, err)
+				return
+			}
+		}
+	})
 }
 
 func checkSSHKeyDestroy(s *terraform.State) error {
