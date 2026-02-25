@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/volumetypes/tmpl"
 )
@@ -21,17 +24,17 @@ func TestAccDataSourceVolumeTypes_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSourceName, "types.#", "1"),
-					resource.TestCheckResourceAttr(dataSourceName, "types.0.id", "volume"),
-					resource.TestCheckResourceAttr(dataSourceName, "types.0.label", "Storage Volume"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.transfer"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.price.0.hourly"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.price.0.monthly"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.region_prices.0.id"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.region_prices.0.hourly"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.region_prices.0.monthly"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact("volume")),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("Storage Volume")),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("transfer"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("hourly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("monthly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("region_prices").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("region_prices").AtSliceIndex(0).AtMapKey("hourly"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("region_prices").AtSliceIndex(0).AtMapKey("monthly"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
