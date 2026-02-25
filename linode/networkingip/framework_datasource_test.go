@@ -46,12 +46,8 @@ func TestAccDataSourceNetworkingIP_basic(t *testing.T) {
 			},
 			{
 				Config: tmpl.DataBasic(t, label, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					// statechecks can't compare int linode_id with string id without implementing a custom comparer.
-					// Keep this legacy check for now.
-					resource.TestCheckResourceAttrPair(dataResourceName, "linode_id", resourceName, "id"),
-				),
 				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.CompareValuePairs(dataResourceName, tfjsonpath.New("linode_id"), resourceName, tfjsonpath.New("id"), compare.ValuesSame()),
 					statecheck.CompareValuePairs(
 						dataResourceName,
 						tfjsonpath.New("address"),
