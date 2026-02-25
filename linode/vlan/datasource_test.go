@@ -11,6 +11,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -56,12 +59,12 @@ func TestAccDataSourceVLANs_basic(t *testing.T) {
 			{
 				PreConfig: preConfigVLANPoll(t, vlanName),
 				Config:    tmpl.DataBasic(t, instanceName, testRegion, vlanName, label),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "vlans.0.label", vlanName),
-					resource.TestCheckResourceAttr(resourceName, "vlans.0.region", testRegion),
-					resource.TestCheckResourceAttrSet(resourceName, "vlans.0.created"),
-					resource.TestCheckResourceAttrSet(resourceName, "vlans.0.linodes.#"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(vlanName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("linodes"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
@@ -86,13 +89,13 @@ func TestAccDataSourceVLANs_regex(t *testing.T) {
 			{
 				PreConfig: preConfigVLANPoll(t, vlanName),
 				Config:    tmpl.DataRegex(t, instanceName, testRegion, vlanName, label),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "vlans.#", 0),
-					resource.TestCheckResourceAttr(resourceName, "vlans.0.label", vlanName),
-					resource.TestCheckResourceAttr(resourceName, "vlans.0.region", testRegion),
-					resource.TestCheckResourceAttrSet(resourceName, "vlans.0.created"),
-					resource.TestCheckResourceAttrSet(resourceName, "vlans.0.linodes.#"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "vlans.#", 0),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(vlanName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vlans").AtSliceIndex(0).AtMapKey("linodes"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
