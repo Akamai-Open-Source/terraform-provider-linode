@@ -756,9 +756,15 @@ func stateCheckBucketExists() statecheck.StateCheck {
 				return
 			}
 
-			cluster, label, err := objbucket.DecodeBucketID(ctx, idVal.(string), &schema.ResourceData{})
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("id is not a string")
+				return
+			}
+
+			cluster, label, err := objbucket.DecodeBucketID(ctx, idStr, &schema.ResourceData{})
 			if err != nil {
-				resp.Error = fmt.Errorf("Error parsing %s, %s", idVal.(string), err)
+				resp.Error = fmt.Errorf("Error parsing %s, %s", idStr, err)
 				return
 			}
 
@@ -786,7 +792,11 @@ func stateCheckBucketDestroy() statecheck.StateCheck {
 				continue
 			}
 
-			idStr := idVal.(string)
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("id is not a string")
+				return
+			}
 			cluster, label, err := objbucket.DecodeBucketID(ctx, idStr, &schema.ResourceData{})
 			if err != nil {
 				resp.Error = fmt.Errorf("Error parsing %s", idStr)
@@ -809,28 +819,6 @@ func stateCheckBucketDestroy() statecheck.StateCheck {
 			}
 		}
 	})
-}
-
-func checkBucketExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_object_storage_objbucket" {
-			continue
-		}
-
-		cluster, label, err := objbucket.DecodeBucketID(context.Background(), rs.Primary.ID, &schema.ResourceData{})
-		if err != nil {
-			return fmt.Errorf("Error parsing %s, %s", rs.Primary.ID, err)
-		}
-
-		_, err = client.GetObjectStorageBucket(context.Background(), cluster, label)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of ObjectStorageBucket %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
 }
 
 func checkBucketDestroy(s *terraform.State) error {

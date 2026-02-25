@@ -183,28 +183,6 @@ func TestAccResourceStackscript_codeChange(t *testing.T) {
 	})
 }
 
-func checkStackscriptExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_stackscript" {
-			continue
-		}
-
-		id, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.ID)
-		}
-
-		_, err = client.GetStackscript(context.Background(), id)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of Stackscript %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
-}
-
 var stateCheckStackscriptExists = acceptance.CustomStateCheck(
 	func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
@@ -220,7 +198,13 @@ var stateCheckStackscriptExists = acceptance.CustomStateCheck(
 				return
 			}
 
-			id, err := strconv.Atoi(idVal.(string))
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("id is not a string")
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
 			if err != nil {
 				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
 				return

@@ -225,7 +225,13 @@ func stateCheckRDNSExists() statecheck.StateCheck {
 				return
 			}
 
-			_, err := client.GetIPAddress(context.Background(), address.(string))
+			addrStr, ok := address.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("address is not a string")
+				return
+			}
+
+			_, err := client.GetIPAddress(context.Background(), addrStr)
 			if err != nil {
 				rdns := rc.AttributeValues["rdns"]
 				resp.Error = fmt.Errorf("Error retrieving state of RDNS %s: %s", rdns, err)
@@ -233,23 +239,6 @@ func stateCheckRDNSExists() statecheck.StateCheck {
 			}
 		}
 	})
-}
-
-func checkRDNSExists(s *terraform.State) error {
-	client := acceptance.TestAccFrameworkProvider.Meta.Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_rdns" {
-			continue
-		}
-
-		_, err := client.GetIPAddress(context.Background(), rs.Primary.Attributes["address"])
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of RDNS %s: %s", rs.Primary.Attributes["rdns"], err)
-		}
-	}
-
-	return nil
 }
 
 func checkRDNSDestroy(s *terraform.State) error {

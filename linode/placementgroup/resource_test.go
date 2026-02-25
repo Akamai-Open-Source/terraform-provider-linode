@@ -80,28 +80,6 @@ func TestAccResourcePG_basic(t *testing.T) {
 	})
 }
 
-func checkPGExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_placement_group" {
-			continue
-		}
-
-		id, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.ID)
-		}
-
-		_, err = client.GetPlacementGroup(context.Background(), id)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of Placement Group %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
-}
-
 func checkPGExistsStateCheck() statecheck.StateCheck {
 	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
@@ -117,7 +95,13 @@ func checkPGExistsStateCheck() statecheck.StateCheck {
 				return
 			}
 
-			id, err := strconv.Atoi(idVal.(string))
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("id is not a string")
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
 			if err != nil {
 				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
 				return

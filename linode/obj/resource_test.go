@@ -249,25 +249,6 @@ func getObject(ctx context.Context, rs *terraform.ResourceState) (*s3.GetObjectO
 	)
 }
 
-func checkObjectExists(resourceName string, obj *s3.GetObjectOutput) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[resourceName]
-		if !ok {
-			return fmt.Errorf("could not find resource %s in root module", resourceName)
-		}
-		key := rs.Primary.Attributes["key"]
-		bucket := rs.Primary.Attributes["bucket"]
-
-		out, err := getObject(context.Background(), rs)
-		if err != nil {
-			return fmt.Errorf("failed to get Bucket (%s) Object (%s): %s", bucket, key, err)
-		}
-
-		*obj = *out
-		return nil
-	}
-}
-
 func checkObjectDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "linode_object_storage_object" {
@@ -284,33 +265,8 @@ func checkObjectDestroy(s *terraform.State) error {
 	return nil
 }
 
-func checkObjectBodyContains(obj *s3.GetObjectOutput, expected string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		body, err := io.ReadAll(obj.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read body: %s", err)
-		}
-		obj.Body.Close()
-
-		if got := string(body); got != expected {
-			return fmt.Errorf("expected body to be %q; got %q", expected, got)
-		}
-		return nil
-	}
-}
-
 func getObjectResourceName(name string) string {
 	return fmt.Sprintf("linode_object_storage_object.%s", name)
-}
-
-func validateObject(resourceName, key, content string) resource.TestCheckFunc {
-	var object s3.GetObjectOutput
-
-	return resource.ComposeTestCheckFunc(
-		checkObjectExists(resourceName, &object),
-		checkObjectBodyContains(&object, content),
-		resource.TestCheckResourceAttr(resourceName, "key", key),
-	)
 }
 
 // stateCheckObjectExists is the statecheck.StateCheck equivalent of checkObjectExists.
@@ -326,25 +282,60 @@ func stateCheckObjectExists(resourceName string, obj *s3.GetObjectOutput) statec
 			}
 			found = true
 			if v, ok := rc.AttributeValues["bucket"]; ok && v != nil {
-				bucket = v.(string)
+				if s, ok := v.(string); ok {
+					bucket = s
+				} else {
+					resp.Error = fmt.Errorf("bucket attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["key"]; ok && v != nil {
-				key = v.(string)
+				if s, ok := v.(string); ok {
+					key = s
+				} else {
+					resp.Error = fmt.Errorf("key attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["etag"]; ok && v != nil {
-				etag = v.(string)
+				if s, ok := v.(string); ok {
+					etag = s
+				} else {
+					resp.Error = fmt.Errorf("etag attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["access_key"]; ok && v != nil {
-				accessKey = v.(string)
+				if s, ok := v.(string); ok {
+					accessKey = s
+				} else {
+					resp.Error = fmt.Errorf("access_key attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["secret_key"]; ok && v != nil {
-				secretKey = v.(string)
+				if s, ok := v.(string); ok {
+					secretKey = s
+				} else {
+					resp.Error = fmt.Errorf("secret_key attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["endpoint"]; ok && v != nil {
-				endpoint = v.(string)
+				if s, ok := v.(string); ok {
+					endpoint = s
+				} else {
+					resp.Error = fmt.Errorf("endpoint attribute is not a string")
+					return
+				}
 			}
 			if v, ok := rc.AttributeValues["region"]; ok && v != nil {
-				region = v.(string)
+				if s, ok := v.(string); ok {
+					region = s
+				} else {
+					resp.Error = fmt.Errorf("region attribute is not a string")
+					return
+				}
 			}
 			break
 		}
