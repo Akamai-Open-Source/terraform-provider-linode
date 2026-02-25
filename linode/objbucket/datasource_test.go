@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/objbucket/tmpl"
 )
@@ -25,16 +28,16 @@ func TestAccDataSourceBucket_basic(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.DataBasicWithCluster(t, objectStorageBucketName, testCluster),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resourceName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resourceName, "region", testRegion),
-						resource.TestCheckResourceAttr(resourceName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttrSet(resourceName, "hostname"),
-						resource.TestCheckResourceAttrSet(resourceName, "created"),
-						resource.TestCheckResourceAttrSet(resourceName, "objects"),
-						resource.TestCheckResourceAttrSet(resourceName, "size"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("objects"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("size"), knownvalue.NotNull()),
+					},
 				},
 			},
 		})
@@ -55,16 +58,16 @@ func TestAccDataSourceBucket_basic_cluster(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.DataBasic(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resourceName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resourceName, "region", testRegion),
-						resource.TestCheckResourceAttr(resourceName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttrSet(resourceName, "hostname"),
-						resource.TestCheckResourceAttrSet(resourceName, "created"),
-						resource.TestCheckResourceAttrSet(resourceName, "objects"),
-						resource.TestCheckResourceAttrSet(resourceName, "size"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("objects"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("size"), knownvalue.NotNull()),
+					},
 				},
 			},
 		})
