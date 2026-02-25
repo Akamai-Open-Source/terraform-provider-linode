@@ -84,14 +84,14 @@ func TestAccResourceObjectKey_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, objectStorageKeyLabel),
-				Check: resource.ComposeTestCheckFunc(
-					checkObjectKeyExists,
-					checkObjectKeySecretAccessible,
-					resource.TestCheckResourceAttr(resName, "label", objectStorageKeyLabel),
-					resource.TestCheckResourceAttrSet(resName, "access_key"),
-					resource.TestCheckResourceAttrSet(resName, "secret_key"),
-					resource.TestCheckResourceAttr(resName, "limited", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckObjectKeyExists(),
+					stateCheckObjectKeySecretAccessible(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageKeyLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("access_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("secret_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("limited"), knownvalue.Bool(false)),
+				},
 			},
 		},
 	})
@@ -159,25 +159,25 @@ func TestAccResourceObjectKey_limited_cluster(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.ClusterLimited(t, objectStorageKeyLabel, testCluster),
-				Check: resource.ComposeTestCheckFunc(
-					checkObjectKeyExists,
-					checkObjectKeySecretAccessible,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_key", objectStorageKeyLabel)),
-					resource.TestCheckResourceAttrSet(resName, "access_key"),
-					resource.TestCheckResourceAttrSet(resName, "secret_key"),
-					resource.TestCheckResourceAttr(resName, "limited", "true"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.#", "2"),
-					resource.TestCheckResourceAttrSet(resName, "bucket_access.0.bucket_name"),
-					resource.TestCheckResourceAttrSet(resName, "bucket_access.1.bucket_name"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.cluster", testCluster),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.cluster", testCluster),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.region", testRegion),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.region", testRegion),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.permissions", "read_only"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.permissions", "read_write"),
-					resource.TestCheckResourceAttr(resName, "regions.#", "1"),
-					resource.TestCheckResourceAttr(resName, "regions.0", testRegion),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckObjectKeyExists(),
+					stateCheckObjectKeySecretAccessible(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_key", objectStorageKeyLabel))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("access_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("secret_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("limited"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access"), knownvalue.SetSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("bucket_name"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("bucket_name"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("cluster"), knownvalue.StringExact(testCluster)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("cluster"), knownvalue.StringExact(testCluster)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("permissions"), knownvalue.StringExact("read_only")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("permissions"), knownvalue.StringExact("read_write")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("regions"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("regions").AtSliceIndex(0), knownvalue.StringExact(testRegion)),
+				},
 			},
 		},
 	})
@@ -196,25 +196,25 @@ func TestAccResourceObjectKey_limited(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Limited(t, objectStorageKeyLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkObjectKeyExists,
-					checkObjectKeySecretAccessible,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_key", objectStorageKeyLabel)),
-					resource.TestCheckResourceAttrSet(resName, "access_key"),
-					resource.TestCheckResourceAttrSet(resName, "secret_key"),
-					resource.TestCheckResourceAttr(resName, "limited", "true"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.#", "2"),
-					resource.TestCheckResourceAttrSet(resName, "bucket_access.0.bucket_name"),
-					resource.TestCheckResourceAttrSet(resName, "bucket_access.1.bucket_name"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.cluster", testCluster),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.cluster", testCluster),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.region", testRegion),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.region", testRegion),
-					resource.TestCheckResourceAttr(resName, "bucket_access.0.permissions", "read_only"),
-					resource.TestCheckResourceAttr(resName, "bucket_access.1.permissions", "read_write"),
-					resource.TestCheckResourceAttr(resName, "regions.#", "1"),
-					resource.TestCheckResourceAttr(resName, "regions.0", testRegion),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckObjectKeyExists(),
+					stateCheckObjectKeySecretAccessible(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_key", objectStorageKeyLabel))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("access_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("secret_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("limited"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access"), knownvalue.SetSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("bucket_name"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("bucket_name"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("cluster"), knownvalue.StringExact(testCluster)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("cluster"), knownvalue.StringExact(testCluster)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(0).AtMapKey("permissions"), knownvalue.StringExact("read_only")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("bucket_access").AtSliceIndex(1).AtMapKey("permissions"), knownvalue.StringExact("read_write")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("regions"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("regions").AtSliceIndex(0), knownvalue.StringExact(testRegion)),
+				},
 			},
 		},
 	})
@@ -232,21 +232,21 @@ func TestAccResourceObjectKey_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, objectStorageKeyLabel),
-				Check: resource.ComposeTestCheckFunc(
-					checkObjectKeyExists,
-					checkObjectKeySecretAccessible,
-					resource.TestCheckResourceAttr(resName, "label", objectStorageKeyLabel),
-					resource.TestCheckResourceAttrSet(resName, "access_key"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckObjectKeyExists(),
+					stateCheckObjectKeySecretAccessible(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageKeyLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("access_key"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, objectStorageKeyLabel),
-				Check: resource.ComposeTestCheckFunc(
-					checkObjectKeyExists,
-					checkObjectKeySecretAccessible, // should be preserved in state
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_renamed", objectStorageKeyLabel)),
-					resource.TestCheckResourceAttrSet(resName, "access_key"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckObjectKeyExists(),
+					stateCheckObjectKeySecretAccessible(), // should be preserved in state
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_renamed", objectStorageKeyLabel))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("access_key"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
@@ -322,4 +322,68 @@ func checkObjectKeyDestroy(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func stateCheckObjectKeyExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_object_storage_key" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("Error: id is not a string")
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idStr)
+				return
+			}
+
+			_, err = client.GetObjectStorageKey(ctx, id)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error retrieving state of Object Storage Key %s: %s", idStr, err)
+				return
+			}
+		}
+	})
+}
+
+func stateCheckObjectKeySecretAccessible() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_object_storage_key" {
+				continue
+			}
+
+			secret, ok := rc.AttributeValues["secret_key"]
+			if !ok {
+				resp.Error = fmt.Errorf("secret_key attribute not found")
+				return
+			}
+
+			secretStr, ok := secret.(string)
+			if !ok || secretStr == "" {
+				resp.Error = fmt.Errorf("Expected secret_key to be accessible but got '%v'", secret)
+				return
+			}
+
+			if secretStr == "[REDACTED]" {
+				resp.Error = fmt.Errorf("Expected secret_key to be accessible but got '%s'", secretStr)
+				return
+			}
+			return
+		}
+	})
 }
