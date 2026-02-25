@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/lketypes/tmpl"
 )
@@ -21,14 +24,38 @@ func TestAccDataSourceLKETypes_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSourceName, "types.#", "1"),
-					resource.TestCheckResourceAttr(dataSourceName, "types.0.id", "lke-sa"),
-					resource.TestCheckResourceAttr(dataSourceName, "types.0.label", "LKE Standard Availability"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.transfer"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.price.0.hourly"),
-					resource.TestCheckResourceAttrSet(dataSourceName, "types.0.price.0.monthly"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types"),
+						knownvalue.ListSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("id"),
+						knownvalue.StringExact("lke-sa"),
+					),
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("label"),
+						knownvalue.StringExact("LKE Standard Availability"),
+					),
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("transfer"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("hourly"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						dataSourceName,
+						tfjsonpath.New("types").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("monthly"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 		},
 	})
