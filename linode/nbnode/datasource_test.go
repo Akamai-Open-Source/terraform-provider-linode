@@ -30,13 +30,13 @@ func TestAccDataSourceNodeBalancerNode_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, nodebalancerName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerNodeExists,
-					resource.TestCheckResourceAttr(resName, "label", nodebalancerName),
-					resource.TestCheckResourceAttrSet(resName, "status"),
-					resource.TestCheckResourceAttr(resName, "mode", "accept"),
-					resource.TestCheckResourceAttr(resName, "weight", "50"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerNodeExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodebalancerName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("mode"), knownvalue.StringExact("accept")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("weight"), knownvalue.Int64Exact(50)),
+				},
 			},
 		},
 	})
