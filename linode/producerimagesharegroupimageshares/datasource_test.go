@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/producerimagesharegroupimageshares/tmpl"
 )
@@ -37,21 +40,21 @@ func TestAccDataSourceImageShareGroupImageShares_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, label, instanceLabel, instanceRegion, imageLabel1, imageLabel2, shareGroupLabel),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dsAll, "image_shares.#", "2"),
-					resource.TestCheckResourceAttr(dsAll, "image_shares.0.label", "image_one_label"),
-					resource.TestCheckResourceAttr(dsAll, "image_shares.0.description", "image one description"),
-					resource.TestCheckResourceAttr(dsAll, "image_shares.1.label", "image_two_label"),
-					resource.TestCheckResourceAttr(dsAll, "image_shares.1.description", "image two description"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_shares"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("image_one_label")),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("image one description")),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_shares").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact("image_two_label")),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_shares").AtSliceIndex(1).AtMapKey("description"), knownvalue.StringExact("image two description")),
 
-					resource.TestCheckResourceAttr(dsByID, "image_shares.#", "1"),
-					resource.TestCheckResourceAttr(dsByID, "image_shares.0.label", "image_one_label"),
-					resource.TestCheckResourceAttr(dsByID, "image_shares.0.description", "image one description"),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_shares"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("image_one_label")),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("image one description")),
 
-					resource.TestCheckResourceAttr(dsByLabel, "image_shares.#", "1"),
-					resource.TestCheckResourceAttr(dsByLabel, "image_shares.0.label", "image_two_label"),
-					resource.TestCheckResourceAttr(dsByLabel, "image_shares.0.description", "image two description"),
-				),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_shares"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("image_two_label")),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_shares").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("image two description")),
+				},
 			},
 		},
 	})
