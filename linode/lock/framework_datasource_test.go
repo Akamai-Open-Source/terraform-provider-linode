@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/lock/tmpl"
@@ -31,14 +34,14 @@ func TestAccDataSourceLock_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, instanceLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(testLockDataName, "id"),
-					resource.TestCheckResourceAttrSet(testLockDataName, "entity_id"),
-					resource.TestCheckResourceAttr(testLockDataName, "entity_type", "linode"),
-					resource.TestCheckResourceAttr(testLockDataName, "lock_type", "cannot_delete"),
-					resource.TestCheckResourceAttrSet(testLockDataName, "entity_label"),
-					resource.TestCheckResourceAttrSet(testLockDataName, "entity_url"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("entity_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("entity_type"), knownvalue.StringExact("linode")),
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("lock_type"), knownvalue.StringExact("cannot_delete")),
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("entity_label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testLockDataName, tfjsonpath.New("entity_url"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
