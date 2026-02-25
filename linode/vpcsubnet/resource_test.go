@@ -46,13 +46,29 @@ func TestAccResourceVPCSubnet_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, subnetLabel, "10.0.0.0/24", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCSubnetExists,
-					resource.TestCheckResourceAttr(resName, "label", subnetLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttr(resName, "databases.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(subnetLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("databases"),
+						knownvalue.ListSizeExact(0),
+					),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -76,21 +92,45 @@ func TestAccResourceVPCSubnet_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, subnetLabel, "192.168.0.0/26", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCSubnetExists,
-					resource.TestCheckResourceAttr(resName, "label", subnetLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(subnetLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, subnetLabel, "192.168.0.0/26", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCSubnetExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s-renamed", subnetLabel)),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(fmt.Sprintf("%s-renamed", subnetLabel)),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("updated"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -120,8 +160,8 @@ func TestAccResourceVPCSubnet_dualStack(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DualStack(t, subnetLabel, "10.0.0.0/24", targetRegion),
-				Check:  checkVPCSubnetExists,
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("label"),
@@ -198,12 +238,24 @@ func TestAccResourceVPCSubnet_update_invalidLabel(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, subnetLabel, "192.168.0.0/26", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCSubnetExists,
-					resource.TestCheckResourceAttr(resName, "label", subnetLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(subnetLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				Config:      tmpl.Updates(t, invalidLabel, "192.168.0.0/26", testRegion),
@@ -226,23 +278,55 @@ func TestAccResourceVPCSubnet_attached(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Attached(t, subnetLabel, "10.0.0.0/24", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCSubnetExists,
-					resource.TestCheckResourceAttr(resName, "label", subnetLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCSubnetExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(subnetLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				// Refresh the configuration so the `linodes` field is updated
 				Config: tmpl.Attached(t, subnetLabel, "10.0.0.0/24", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "linodes.#", "1"),
-					resource.TestCheckResourceAttrSet(resName, "linodes.0.id"),
-					resource.TestCheckResourceAttr(resName, "linodes.0.interfaces.#", "1"),
-					resource.TestCheckResourceAttrSet(resName, "linodes.0.interfaces.0.id"),
-					resource.TestCheckResourceAttr(resName, "linodes.0.interfaces.0.active", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("linodes"),
+						knownvalue.ListSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces"),
+						knownvalue.ListSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces").AtSliceIndex(0).AtMapKey("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces").AtSliceIndex(0).AtMapKey("active"),
+						knownvalue.StringExact("false"),
+					),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -251,6 +335,48 @@ func TestAccResourceVPCSubnet_attached(t *testing.T) {
 				ImportStateIdFunc: resourceImportStateID,
 			},
 		},
+	})
+}
+
+func stateCheckVPCSubnetExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rs := range req.State.Values.RootModule.Resources {
+			if rs.Type != "linode_vpc_subnet" {
+				continue
+			}
+
+			idVal, ok := rs.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set for %s", rs.Address)
+				return
+			}
+
+			id, err := strconv.Atoi(fmt.Sprintf("%v", idVal))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			vpcIDVal, ok := rs.AttributeValues["vpc_id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No vpc_id set for %s", rs.Address)
+				return
+			}
+
+			vpcID, err := strconv.Atoi(fmt.Sprintf("%v", vpcIDVal))
+			if err != nil {
+				resp.Error = fmt.Errorf("failed to parse vpc_id: %s", err)
+				return
+			}
+
+			_, err = client.GetVPCSubnet(context.Background(), vpcID, id)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error retrieving state of VPC subnet %s: %s", rs.Address, err)
+				return
+			}
+		}
 	})
 }
 
