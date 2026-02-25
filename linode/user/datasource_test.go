@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/user/tmpl"
 )
@@ -23,12 +26,12 @@ func TestAccDataSourceUser_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "username"),
-					resource.TestCheckResourceAttrSet(resourceName, "email"),
-					resource.TestCheckResourceAttrSet(resourceName, "user_type"),
-					resource.TestCheckResourceAttrSet(resourceName, "tfa_enabled"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("username"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("email"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("user_type"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("tfa_enabled"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config:      tmpl.DataNoUser(t),
@@ -52,18 +55,18 @@ func TestAccDataSourceUser_grants(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataGrants(t, username, email),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "global_grants.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "domain_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "firewall_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "image_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "linode_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "longview_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "stackscript_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "volume_grant.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "vpc_grant.#"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("global_grants"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("domain_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("firewall_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("image_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("linode_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("longview_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("stackscript_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("volume_grant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("vpc_grant"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
