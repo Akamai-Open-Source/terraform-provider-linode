@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/instancereservedipassignment/tmpl"
@@ -37,18 +40,18 @@ func TestAccInstanceIP_addReservedIP(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.AddReservedIP(t, name, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "address"),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "public", "true"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "linode_id"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "gateway"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "subnet_mask"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "prefix"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "rdns"),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "region", testRegion),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "type", "ipv4"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("address"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("public"), knownvalue.StringExact("true")),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("linode_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("gateway"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("subnet_mask"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("prefix"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("rdns"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("type"), knownvalue.StringExact("ipv4")),
+				},
 			},
 		},
 	})
