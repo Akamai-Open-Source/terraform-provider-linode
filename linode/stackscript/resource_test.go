@@ -10,7 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -74,13 +77,13 @@ func TestAccResourceStackscript_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, stackscriptName),
-				Check: resource.ComposeTestCheckFunc(
-					checkStackscriptExists,
-					resource.TestCheckResourceAttr(resName, "description", "tf_test stackscript"),
-					resource.TestCheckResourceAttr(resName, "rev_note", "initial"),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu24.04"),
-					resource.TestCheckResourceAttr(resName, "label", stackscriptName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckStackscriptExists,
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("tf_test stackscript")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rev_note"), knownvalue.StringExact("initial")),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu24.04"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(stackscriptName)),
+				},
 			},
 
 			{
@@ -105,23 +108,23 @@ func TestAccResourceStackscript_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, stackscriptName),
-				Check: resource.ComposeTestCheckFunc(
-					checkStackscriptExists,
-					resource.TestCheckResourceAttr(resName, "description", "tf_test stackscript"),
-					resource.TestCheckResourceAttr(resName, "rev_note", "initial"),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu24.04"),
-					resource.TestCheckResourceAttr(resName, "label", stackscriptName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckStackscriptExists,
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("tf_test stackscript")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rev_note"), knownvalue.StringExact("initial")),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu24.04"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(stackscriptName)),
+				},
 			},
 			{
 				Config: tmpl.Basic(t, stackscriptName+"_renamed"),
-				Check: resource.ComposeTestCheckFunc(
-					checkStackscriptExists,
-					resource.TestCheckResourceAttr(resName, "description", "tf_test stackscript"),
-					resource.TestCheckResourceAttr(resName, "rev_note", "initial"),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu24.04"),
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_renamed", stackscriptName)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckStackscriptExists,
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("tf_test stackscript")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rev_note"), knownvalue.StringExact("initial")),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu24.04"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_renamed", stackscriptName))),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -144,36 +147,32 @@ func TestAccResourceStackscript_codeChange(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, stackscriptName),
-				Check: resource.ComposeTestCheckFunc(
-					checkStackscriptExists,
-					resource.TestCheckResourceAttr(resName, "description", "tf_test stackscript"),
-					resource.TestCheckResourceAttr(resName, "rev_note", "initial"),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu24.04"),
-					resource.TestCheckResourceAttr(resName, "script", "#!/bin/bash\necho hello\n"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.#", "0"),
-					resource.TestCheckResourceAttr(resName, "label", stackscriptName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckStackscriptExists,
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("tf_test stackscript")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rev_note"), knownvalue.StringExact("initial")),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu24.04"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("script"), knownvalue.StringExact("#!/bin/bash\necho hello\n")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(stackscriptName)),
+				},
 			},
 			{
 				Config: tmpl.CodeChange(t, stackscriptName),
-				Check: resource.ComposeTestCheckFunc(
-					checkStackscriptExists,
-					resource.TestCheckResourceAttr(resName, "description", "tf_test stackscript"),
-					resource.TestCheckResourceAttr(resName, "rev_note", "second"),
-					resource.TestCheckResourceAttr(
-						resName,
-						"script",
-						"#!/bin/bash\n# <UDF name=\"hasudf\" label=\"a label\" example=\"an example\" default=\"a default\">\necho bye\n",
-					),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu24.04"),
-					acceptance.CheckListContains(resName, "images", "linode/ubuntu22.04"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.#", "1"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.0.name", "hasudf"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.0.label", "a label"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.0.default", "a default"),
-					resource.TestCheckResourceAttr(resName, "user_defined_fields.0.example", "an example"),
-					resource.TestCheckResourceAttr(resName, "label", stackscriptName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckStackscriptExists,
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("description"), knownvalue.StringExact("tf_test stackscript")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rev_note"), knownvalue.StringExact("second")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("script"), knownvalue.StringExact("#!/bin/bash\n# <UDF name=\"hasudf\" label=\"a label\" example=\"an example\" default=\"a default\">\necho bye\n")),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu24.04"),
+					acceptance.StateCheckListContains(resName, "images", "linode/ubuntu22.04"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("name"), knownvalue.StringExact("hasudf")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("a label")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("default"), knownvalue.StringExact("a default")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("user_defined_fields").AtSliceIndex(0).AtMapKey("example"), knownvalue.StringExact("an example")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(stackscriptName)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -205,6 +204,36 @@ func checkStackscriptExists(s *terraform.State) error {
 
 	return nil
 }
+
+var stateCheckStackscriptExists = acceptance.CustomStateCheck(
+	func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_stackscript" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			_, err = client.GetStackscript(context.Background(), id)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error retrieving state of Stackscript %v: %s", rc.AttributeValues["label"], err)
+				return
+			}
+		}
+	},
+)
 
 func checkStackscriptDestroy(s *terraform.State) error {
 	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
