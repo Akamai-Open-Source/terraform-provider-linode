@@ -11,7 +11,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -48,25 +51,25 @@ func TestAccResourcePG_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, testRegion, placementGroupType, "flexible"),
-				Check: resource.ComposeTestCheckFunc(
-					checkPGExists,
-					resource.TestCheckResourceAttr(resName, "label", label),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "placement_group_type", placementGroupType),
-					resource.TestCheckResourceAttr(resName, "placement_group_policy", "flexible"),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					checkPGExistsStateCheck(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(label)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group_type"), knownvalue.StringExact(placementGroupType)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group_policy"), knownvalue.StringExact("flexible")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.Basic(t, labelUpdated, testRegion, placementGroupType, "flexible"),
-				Check: resource.ComposeTestCheckFunc(
-					checkPGExists,
-					resource.TestCheckResourceAttr(resName, "label", labelUpdated),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "placement_group_type", placementGroupType),
-					resource.TestCheckResourceAttr(resName, "placement_group_policy", "flexible"),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					checkPGExistsStateCheck(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(labelUpdated)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group_type"), knownvalue.StringExact(placementGroupType)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group_policy"), knownvalue.StringExact("flexible")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("id"), knownvalue.NotNull()),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -97,6 +100,37 @@ func checkPGExists(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func checkPGExistsStateCheck() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_placement_group" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			_, err = client.GetPlacementGroup(context.Background(), id)
+			if err != nil {
+				labelVal, _ := rc.AttributeValues["label"]
+				resp.Error = fmt.Errorf("Error retrieving state of Placement Group %s: %s", labelVal, err)
+				return
+			}
+		}
+	})
 }
 
 func checkPGDestroy(s *terraform.State) error {
