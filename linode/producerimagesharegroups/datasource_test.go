@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/producerimagesharegroups/tmpl"
 )
@@ -28,36 +31,36 @@ func TestAccDataSourceImageShareGroups_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, label1, label2),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(dsAll, "image_share_groups.#", 1),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.id"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.uuid"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.label"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.is_suspended"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.images_count"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.members_count"),
-					resource.TestCheckResourceAttrSet(dsAll, "image_share_groups.0.created"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(dsAll, "image_share_groups.#", 1),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("is_suspended"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("images_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("members_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAll, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
 
-					resource.TestCheckResourceAttr(dsByLabel, "image_share_groups.#", "1"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.id"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.uuid"),
-					resource.TestCheckResourceAttr(dsByLabel, "image_share_groups.0.label", label1),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.is_suspended"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.images_count"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.members_count"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "image_share_groups.0.created"),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(label1)),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("is_suspended"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("images_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("members_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
 
-					resource.TestCheckResourceAttr(dsByID, "image_share_groups.#", "1"),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.id"),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.uuid"),
-					resource.TestCheckResourceAttr(dsByID, "image_share_groups.0.label", label2),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.is_suspended"),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.images_count"),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.members_count"),
-					resource.TestCheckResourceAttrSet(dsByID, "image_share_groups.0.created"),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(label2)),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("is_suspended"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("images_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("members_count"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByID, tfjsonpath.New("image_share_groups").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
 
-					acceptance.CheckResourceAttrGreaterThan(dsByIsSuspended, "image_share_groups.#", 1),
-				),
+					acceptance.StateCheckResourceAttrGreaterThan(dsByIsSuspended, "image_share_groups.#", 1),
+				},
 			},
 		},
 	})
