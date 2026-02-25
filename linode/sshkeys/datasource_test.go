@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/sshkeys/tmpl"
 )
@@ -25,39 +28,39 @@ func TestAccDataSourceSSHKeys_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataFilterEmpty(t, keyLabel, keySSH),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys"), knownvalue.ListSizeExact(0)),
+				},
 			},
 			{
 				Config: tmpl.DataFilter(t, keyLabel, keySSH),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.#", "1"),
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.0.label", keyLabel+"-0"),
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.0.ssh_key", keySSH),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.id"),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(keyLabel+"-0")),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("ssh_key"), knownvalue.StringExact(keySSH)),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.DataBasic(t, keyLabel, keySSH),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.#", "1"),
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.0.label", keyLabel+"-0"),
-					resource.TestCheckResourceAttr(testSSHKeyDataName, "sshkeys.0.ssh_key", keySSH),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.id"),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(keyLabel+"-0")),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("ssh_key"), knownvalue.StringExact(keySSH)),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.DataAll(t, keyLabel, keySSH),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(testSSHKeyDataName, "sshkeys.#", 1),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.label"),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.ssh_key"),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.id"),
-					resource.TestCheckResourceAttrSet(testSSHKeyDataName, "sshkeys.0.created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckResourceAttrGreaterThan(testSSHKeyDataName, "sshkeys.#", 1),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("ssh_key"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testSSHKeyDataName, tfjsonpath.New("sshkeys").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
