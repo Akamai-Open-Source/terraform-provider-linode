@@ -26,13 +26,33 @@ func TestAccDataSourceVPC_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, vpcLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "label", vpcLabel),
-					resource.TestCheckResourceAttrSet(resourceName, "description"),
-					resource.TestCheckResourceAttrSet(resourceName, "region"),
-					resource.TestCheckResourceAttrSet(resourceName, "created"),
-					resource.TestCheckResourceAttrSet(resourceName, "updated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(vpcLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("description"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("region"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("updated"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 		},
 	})
