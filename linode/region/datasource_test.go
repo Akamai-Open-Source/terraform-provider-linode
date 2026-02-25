@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/region/tmpl"
 )
@@ -51,20 +54,20 @@ func TestAccDataSourceRegion_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, regionID, label),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "country"),
-					resource.TestCheckResourceAttr(resourceName, "id", regionID),
-					resource.TestCheckResourceAttr(resourceName, "label", label),
-					resource.TestCheckResourceAttrSet(resourceName, "status"),
-					resource.TestCheckResourceAttrSet(resourceName, "site_type"),
-					resource.TestCheckResourceAttrSet(resourceName, "resolvers.0.ipv4"),
-					resource.TestCheckResourceAttrSet(resourceName, "resolvers.0.ipv6"),
-					resource.TestCheckResourceAttrSet(resourceName, "placement_group_limits.0.maximum_pgs_per_customer"),
-					resource.TestCheckResourceAttrSet(resourceName, "placement_group_limits.0.maximum_linodes_per_pg"),
-					resource.TestCheckResourceAttrSet(resourceName, "monitors.alerts.0"),
-					resource.TestCheckResourceAttrSet(resourceName, "monitors.metrics.0"),
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "capabilities.#", 0),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("country"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.StringExact(regionID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(label)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("site_type"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("resolvers").AtSliceIndex(0).AtMapKey("ipv4"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("resolvers").AtSliceIndex(0).AtMapKey("ipv6"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("placement_group_limits").AtSliceIndex(0).AtMapKey("maximum_pgs_per_customer"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("placement_group_limits").AtSliceIndex(0).AtMapKey("maximum_linodes_per_pg"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("monitors").AtMapKey("alerts").AtSliceIndex(0), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("monitors").AtMapKey("metrics").AtSliceIndex(0), knownvalue.NotNull()),
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "capabilities.#", 0),
+				},
 			},
 		},
 	})
