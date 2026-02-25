@@ -10,7 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/token/tmpl"
@@ -60,13 +63,13 @@ func TestAccResourceToken_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, tokenName),
-				Check: resource.ComposeTestCheckFunc(
-					checkTokenExists,
-					resource.TestCheckResourceAttr(resName, "label", tokenName),
-					resource.TestCheckResourceAttr(resName, "expiry", "2100-01-02T03:04:05Z"),
-					resource.TestCheckResourceAttr(resName, "scopes", "linodes:read_only"),
-					resource.TestCheckResourceAttrSet(resName, "token"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckTokenExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(tokenName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("expiry"), knownvalue.StringExact("2100-01-02T03:04:05Z")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("scopes"), knownvalue.StringExact("linodes:read_only")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("token"), knownvalue.NotNull()),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -76,10 +79,10 @@ func TestAccResourceToken_basic(t *testing.T) {
 			},
 			{
 				Config: tmpl.Updates(t, tokenName),
-				Check: resource.ComposeTestCheckFunc(
-					checkTokenExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_renamed", tokenName)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckTokenExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_renamed", tokenName))),
+				},
 			},
 		},
 	})
@@ -92,23 +95,23 @@ func TestAccResourceToken_recreative_update(t *testing.T) {
 	tokenName := acctest.RandomWithPrefix("tf_test")
 
 	var currentToken string
-	tokenRecreatedCheck := func(s *terraform.State) error {
-		for _, rs := range s.RootModule().Resources {
+	tokenRecreatedCheck := acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rs := range req.State.Values.RootModule.Resources {
 			if rs.Type != "linode_token" {
 				continue
 			}
 
-			newToken, ok := rs.Primary.Attributes["token"]
+			newToken, ok := rs.AttributeValues["token"].(string)
 			if !ok {
-				return fmt.Errorf("Can't find the token in the state.")
+				resp.Error = fmt.Errorf("Can't find the token in the state.")
+				return
 			}
 			if newToken == currentToken {
-				return fmt.Errorf("The token suppose to be but was not recreated.")
+				resp.Error = fmt.Errorf("The token suppose to be but was not recreated.")
+				return
 			}
-
 		}
-		return nil
-	}
+	})
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acceptance.PreCheck(t) },
@@ -117,14 +120,14 @@ func TestAccResourceToken_recreative_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, tokenName),
-				Check: resource.ComposeTestCheckFunc(
-					checkTokenExists,
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckTokenExists(),
 					tokenRecreatedCheck,
-					resource.TestCheckResourceAttr(resName, "label", tokenName),
-					resource.TestCheckResourceAttr(resName, "expiry", "2100-01-02T03:04:05Z"),
-					resource.TestCheckResourceAttr(resName, "scopes", "linodes:read_only"),
-					resource.TestCheckResourceAttrSet(resName, "token"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(tokenName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("expiry"), knownvalue.StringExact("2100-01-02T03:04:05Z")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("scopes"), knownvalue.StringExact("linodes:read_only")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("token"), knownvalue.NotNull()),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -134,44 +137,53 @@ func TestAccResourceToken_recreative_update(t *testing.T) {
 			},
 			{
 				Config: tmpl.RecreateNewExpiryDate(t, tokenName, "2099-05-04T03:02:01+00:00"),
-				Check: resource.ComposeTestCheckFunc(
-					checkTokenExists,
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckTokenExists(),
 					tokenRecreatedCheck,
-					resource.TestCheckResourceAttr(resName, "expiry", "2099-05-04T03:02:01+00:00"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("expiry"), knownvalue.StringExact("2099-05-04T03:02:01+00:00")),
+				},
 			},
 			{
 				Config: tmpl.RecreateNewScopes(t, tokenName, "linodes:read_only lke:read_only"),
-				Check: resource.ComposeTestCheckFunc(
-					checkTokenExists,
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckTokenExists(),
 					tokenRecreatedCheck,
-					resource.TestCheckResourceAttr(resName, "scopes", "linodes:read_only lke:read_only"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("scopes"), knownvalue.StringExact("linodes:read_only lke:read_only")),
+				},
 			},
 		},
 	})
 }
 
-func checkTokenExists(s *terraform.State) error {
-	client := acceptance.TestAccFrameworkProvider.Meta.Client
+func stateCheckTokenExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccFrameworkProvider.Meta.Client
 
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_token" {
-			continue
+		for _, rs := range req.State.Values.RootModule.Resources {
+			if rs.Type != "linode_token" {
+				continue
+			}
+
+			idStr, ok := rs.AttributeValues["id"].(string)
+			if !ok {
+				resp.Error = fmt.Errorf("Error parsing ID for token")
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idStr)
+				return
+			}
+
+			_, err = client.GetToken(ctx, id)
+			if err != nil {
+				label, _ := rs.AttributeValues["label"].(string)
+				resp.Error = fmt.Errorf("Error retrieving state of Token %s: %s", label, err)
+				return
+			}
 		}
-
-		id, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.ID)
-		}
-
-		_, err = client.GetToken(context.Background(), id)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of Token %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
+	})
 }
 
 func checkTokenDestroy(s *terraform.State) error {
