@@ -63,7 +63,12 @@ var stateCheckNodeBalancerConfigExists statecheck.StateCheck = acceptance.Custom
 			}
 
 			// nodebalancer_id is Int64Attribute — JSON state represents as float64
-			nodebalancerID := int(nbIDVal.(float64))
+			nbIDFloat, ok := nbIDVal.(float64)
+			if !ok {
+				resp.Error = fmt.Errorf("expected nodebalancer_id to be float64, got %T", nbIDVal)
+				return
+			}
+			nodebalancerID := int(nbIDFloat)
 
 			_, err = client.GetNodeBalancerConfig(context.Background(), nodebalancerID, id)
 			if err != nil {
@@ -309,33 +314,6 @@ func TestLinodeNodeBalancerConfig_UpgradeV0Empty(t *testing.T) {
 		t.Fatalf("expected %v, got %v", desiredUp, desiredUp)
 	}
 }
-
-func checkNodeBalancerConfigExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_nodebalancer_config" {
-			continue
-		}
-
-		id, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.ID)
-		}
-		nodebalancerID, err := strconv.Atoi(rs.Primary.Attributes["nodebalancer_id"])
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.Attributes["nodebalancer_id"])
-		}
-
-		_, err = client.GetNodeBalancerConfig(context.Background(), nodebalancerID, id)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of NodeBalancer Config %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
-}
-
 func checkNodeBalancerConfigDestroy(s *terraform.State) error {
 	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
 	for _, rs := range s.RootModule().Resources {

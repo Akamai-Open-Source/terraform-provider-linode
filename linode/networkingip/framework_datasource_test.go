@@ -47,6 +47,9 @@ func TestAccDataSourceNetworkingIP_basic(t *testing.T) {
 			{
 				Config: tmpl.DataBasic(t, label, testRegion),
 				ConfigStateChecks: []statecheck.StateCheck{
+					// NOTE: linode_id is an Int64 attribute and id is a String attribute.
+					// In the JSON state representation, both values serialize to comparable types,
+					// allowing ValuesSame() to function correctly for this comparison.
 					statecheck.CompareValuePairs(dataResourceName, tfjsonpath.New("linode_id"), resourceName, tfjsonpath.New("id"), compare.ValuesSame()),
 					statecheck.CompareValuePairs(
 						dataResourceName,

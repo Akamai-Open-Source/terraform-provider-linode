@@ -64,7 +64,13 @@ func TestAccResourceNetworkingIPsAssign(t *testing.T) {
 								continue
 							}
 
-							filter := fmt.Sprintf(`{"region": "%s"}`, regionVal.(string))
+							regionStr, ok := regionVal.(string)
+							if !ok {
+								resp.Error = fmt.Errorf("expected region to be a string, got %T", regionVal)
+								return
+							}
+
+							filter := fmt.Sprintf(`{"region": "%s"}`, regionStr)
 							ips, err := client.ListIPAddresses(context.Background(), &linodego.ListOptions{Filter: filter})
 							if err != nil {
 								resp.Error = fmt.Errorf("Error listing IP addresses: %s", err)
@@ -92,36 +98,6 @@ func TestAccResourceNetworkingIPsAssign(t *testing.T) {
 		},
 	})
 }
-
-func checkNetworkingIPsAssignExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_networking_assign_ip" {
-			continue
-		}
-
-		filter := fmt.Sprintf("{\"region\": \"%s\"}", rs.Primary.Attributes["region"])
-		ips, err := client.ListIPAddresses(context.Background(), &linodego.ListOptions{Filter: filter})
-		if err != nil {
-			return fmt.Errorf("Error listing IP addresses: %s", err)
-		}
-
-		assignmentCount := 0
-		for _, ip := range ips {
-			if ip.LinodeID != 0 {
-				assignmentCount++
-			}
-		}
-
-		if assignmentCount == 0 {
-			return fmt.Errorf("No IP assignments found")
-		}
-	}
-
-	return nil
-}
-
 func checkNetworkingIPsAssignDestroy(s *terraform.State) error {
 	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
 	for _, rs := range s.RootModule().Resources {

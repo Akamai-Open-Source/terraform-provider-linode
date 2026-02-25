@@ -611,19 +611,6 @@ func TestAccResourceNodePool_disableAutoscalingExplicitNodeCount(t *testing.T) {
 	})
 }
 
-func checkNodePoolExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-	clusterID, poolID, err := extractIDs(s)
-	if err != nil {
-		return err
-	}
-	_, err = client.GetLKENodePool(context.Background(), clusterID, poolID)
-	if err != nil {
-		return fmt.Errorf("Error retrieving state of node pool %d: %v", poolID, err)
-	}
-	return nil
-}
-
 func stateCheckNodePoolExists() statecheck.StateCheck {
 	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
@@ -652,7 +639,12 @@ func stateCheckNodePoolExists() statecheck.StateCheck {
 			}
 
 			// cluster_id is Int64Attribute in the schema, so tfjson stores it as float64
-			clusterIDInt := int(clusterIDVal.(float64))
+			clusterIDFloat, ok := clusterIDVal.(float64)
+			if !ok {
+				resp.Error = fmt.Errorf("expected cluster_id to be float64, got %T", clusterIDVal)
+				return
+			}
+			clusterIDInt := int(clusterIDFloat)
 
 			_, err = client.GetLKENodePool(context.Background(), clusterIDInt, id)
 			if err != nil {

@@ -103,7 +103,7 @@ func TestAccResourceNodeBalancer_basic_smoke(t *testing.T) {
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
-					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetSizeExact(1)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
 				},
 			},
@@ -143,7 +143,7 @@ func TestAccResourceNodeBalancer_update(t *testing.T) {
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
-					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetSizeExact(1)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
 				},
 			},
@@ -160,7 +160,7 @@ func TestAccResourceNodeBalancer_update(t *testing.T) {
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("created"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("updated"), knownvalue.NotNull()),
-					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetSizeExact(2)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(1), knownvalue.StringExact("tf_test_2")),
 				},
@@ -212,7 +212,7 @@ func TestAccResourceNodeBalancer_firewall(t *testing.T) {
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0), knownvalue.StringExact("0.0.0.0/0")),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv6"), knownvalue.ListSizeExact(1)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("outbound").AtSliceIndex(0).AtMapKey("ipv6").AtSliceIndex(0), knownvalue.StringExact("2001:db8::/32")),
-					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags"), knownvalue.SetSizeExact(1)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewalls").AtSliceIndex(0).AtMapKey("tags").AtSliceIndex(0), knownvalue.StringExact("test")),
 				},
 			},
@@ -222,7 +222,7 @@ func TestAccResourceNodeBalancer_firewall(t *testing.T) {
 					stateCheckNodeBalancerExists(),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_r", nodebalancerName))),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("client_conn_throttle"), knownvalue.StringExact("0")),
-					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetSizeExact(2)),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
 					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(1), knownvalue.StringExact("tf_test_2")),
 				},
@@ -373,7 +373,13 @@ func stateCheckNodeBalancerExists() statecheck.StateCheck {
 				return
 			}
 
-			id, err := strconv.Atoi(idVal.(string))
+			idStr, ok := idVal.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("expected id to be a string, got %T", idVal)
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
 			if err != nil {
 				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
 				return
@@ -387,28 +393,6 @@ func stateCheckNodeBalancerExists() statecheck.StateCheck {
 		}
 	})
 }
-
-func checkNodeBalancerExists(s *terraform.State) error {
-	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "linode_nodebalancer" {
-			continue
-		}
-
-		id, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("Error parsing %v to int", rs.Primary.ID)
-		}
-
-		_, err = client.GetNodeBalancer(context.Background(), id)
-		if err != nil {
-			return fmt.Errorf("Error retrieving state of NodeBalancer %s: %s", rs.Primary.Attributes["label"], err)
-		}
-	}
-
-	return nil
-}
-
 func checkNodeBalancerDestroy(s *terraform.State) error {
 	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
 	for _, rs := range s.RootModule().Resources {
