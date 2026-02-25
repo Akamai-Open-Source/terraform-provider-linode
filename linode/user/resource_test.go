@@ -9,7 +9,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -30,14 +33,14 @@ func TestAccResourceUser_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, username, email, true),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testUserResName, "email", email),
-					resource.TestCheckResourceAttr(testUserResName, "username", username),
-					resource.TestCheckResourceAttr(testUserResName, "restricted", "true"),
-					resource.TestCheckResourceAttrSet(testUserResName, "user_type"),
-					resource.TestCheckResourceAttr(testUserResName, "ssh_keys.#", "0"),
-					resource.TestCheckResourceAttr(testUserResName, "tfa_enabled", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("email"), knownvalue.StringExact(email)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("username"), knownvalue.StringExact(username)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("restricted"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("user_type"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("ssh_keys"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("tfa_enabled"), knownvalue.Bool(false)),
+				},
 			},
 		},
 	})
@@ -56,23 +59,23 @@ func TestAccResourceUser_updates(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, username, email, false),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testUserResName, "email", email),
-					resource.TestCheckResourceAttr(testUserResName, "username", username),
-					resource.TestCheckResourceAttr(testUserResName, "restricted", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "ssh_keys.#", "0"),
-					resource.TestCheckResourceAttr(testUserResName, "tfa_enabled", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("email"), knownvalue.StringExact(email)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("username"), knownvalue.StringExact(username)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("restricted"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("ssh_keys"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("tfa_enabled"), knownvalue.Bool(false)),
+				},
 			},
 			{
 				Config: tmpl.Basic(t, updatedUsername, email, true),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testUserResName, "email", email),
-					resource.TestCheckResourceAttr(testUserResName, "username", updatedUsername),
-					resource.TestCheckResourceAttr(testUserResName, "restricted", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "ssh_keys.#", "0"),
-					resource.TestCheckResourceAttr(testUserResName, "tfa_enabled", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("email"), knownvalue.StringExact(email)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("username"), knownvalue.StringExact(updatedUsername)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("restricted"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("ssh_keys"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("tfa_enabled"), knownvalue.Bool(false)),
+				},
 			},
 		},
 	})
@@ -92,42 +95,42 @@ func TestAccResourceUser_grants(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Grants(t, username, email),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.account_access", ""),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_domains", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_databases", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_firewalls", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_images", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_linodes", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_longview", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_nodebalancers", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_stackscripts", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_volumes", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_vpcs", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.cancel_account", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.longview_subscription", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "linode_grant.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("account_access"), knownvalue.StringExact("")),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_domains"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_databases"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_firewalls"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_images"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_linodes"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_longview"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_nodebalancers"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_stackscripts"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_volumes"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_vpcs"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("cancel_account"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("longview_subscription"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("linode_grant"), knownvalue.SetSizeExact(0)),
+				},
 			},
 			{
 				Config: tmpl.GrantsUpdate(t, username, email, instance),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.account_access", "read_only"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_domains", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_databases", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_firewalls", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_images", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_linodes", "true"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_longview", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_nodebalancers", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_stackscripts", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_volumes", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.add_vpcs", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.cancel_account", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "global_grants.0.longview_subscription", "false"),
-					resource.TestCheckResourceAttr(testUserResName, "linode_grant.#", "1"),
-					resource.TestCheckResourceAttr(testUserResName, "linode_grant.0.permissions", "read_write"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("account_access"), knownvalue.StringExact("read_only")),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_domains"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_databases"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_firewalls"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_images"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_linodes"), knownvalue.Bool(true)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_longview"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_nodebalancers"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_stackscripts"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_volumes"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("add_vpcs"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("cancel_account"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("global_grants").AtSliceIndex(0).AtMapKey("longview_subscription"), knownvalue.Bool(false)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("linode_grant"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(testUserResName, tfjsonpath.New("linode_grant").AtSliceIndex(0).AtMapKey("permissions"), knownvalue.StringExact("read_write")),
+				},
 			},
 		},
 	})
