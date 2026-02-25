@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/images/tmpl"
 )
@@ -36,89 +39,89 @@ func TestAccDataSourceImages_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, imageName, testRegion, label),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "images.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.label", imageName),
-					resource.TestCheckResourceAttr(resourceName, "images.0.description", "descriptive text"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.is_public", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.is_shared", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.image_sharing.shared_with.sharegroup_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.image_sharing.shared_with.sharegroup_list_url"),
-					resource.TestCheckNoResourceAttr(resourceName, "images.0.image_sharing.shared_by"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.type", "manual"),
-					acceptance.CheckListContains(resourceName, "images.0.tags", "test"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.created"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.created_by"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.size"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.deprecated"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.capabilities.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.total_size"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.replications.#"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.label", imageName),
-					resource.TestCheckResourceAttr(resourceName, "images.1.description", "descriptive text"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.is_public", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.is_shared", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.image_sharing.shared_with.sharegroup_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.image_sharing.shared_with.sharegroup_list_url"),
-					resource.TestCheckNoResourceAttr(resourceName, "images.1.image_sharing.shared_by"),
-					resource.TestCheckResourceAttr(resourceName, "images.1.type", "manual"),
-					acceptance.CheckListContains(resourceName, "images.1.tags", "test"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.created"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.created_by"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.size"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.deprecated"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.capabilities.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.total_size"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.1.replications.#"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("descriptive text")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("is_shared"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_list_url"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("image_sharing").AtMapKey("shared_by"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("type"), knownvalue.StringExact("manual")),
+					acceptance.StateCheckListContains(resourceName, "images.0.tags", "test"),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("capabilities"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("total_size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("replications"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("description"), knownvalue.StringExact("descriptive text")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("is_shared"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_count"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("image_sharing").AtMapKey("shared_with").AtMapKey("sharegroup_list_url"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("image_sharing").AtMapKey("shared_by"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("type"), knownvalue.StringExact("manual")),
+					acceptance.StateCheckListContains(resourceName, "images.1.tags", "test"),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("capabilities"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("total_size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(1).AtMapKey("replications"), knownvalue.NotNull()),
+				},
 			},
 
 			// These cases are all used in the same test to avoid recreating images unnecessarily
 			{
 				Config: tmpl.DataLatest(t, imageName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "images.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.label", imageName),
-					resource.TestCheckResourceAttr(resourceName, "images.0.description", "descriptive text"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.is_public", "false"),
-					resource.TestCheckResourceAttr(resourceName, "images.0.type", "manual"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.created"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.created_by"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.size"),
-					resource.TestCheckResourceAttrSet(resourceName, "images.0.deprecated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(imageName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("description"), knownvalue.StringExact("descriptive text")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("is_public"), knownvalue.StringExact("false")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("type"), knownvalue.StringExact("manual")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("created"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("created_by"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("size"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images").AtSliceIndex(0).AtMapKey("deprecated"), knownvalue.NotNull()),
+				},
 			},
 
 			{
 				Config: tmpl.DataLatestEmpty(t, imageName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "images.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(0)),
+				},
 			},
 
 			{
 				Config: tmpl.DataOrder(t, imageName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
+				ConfigStateChecks: []statecheck.StateCheck{
 					// Ensure order is correctly appended to filter
-					resource.TestCheckResourceAttr(resourceName, "images.#", "2"),
-				),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(2)),
+				},
 			},
 
 			{
 				Config: tmpl.DataSubstring(t, imageName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
+				ConfigStateChecks: []statecheck.StateCheck{
 					// Ensure order is correctly appended to filter
-					acceptance.CheckResourceAttrGreaterThan(resourceName, "images.#", 1),
-					acceptance.CheckResourceAttrContains(resourceName, "images.0.label", "Alpine"),
-				),
+					acceptance.StateCheckResourceAttrGreaterThan(resourceName, "images.#", 1),
+					acceptance.StateCheckResourceAttrContains(resourceName, "images.0.label", "Alpine"),
+				},
 			},
 
 			{
 				Config: tmpl.DataClientFilter(t, imageName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "images.#", "1"),
-					acceptance.CheckResourceAttrContains(resourceName, "images.0.label", imageName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("images"), knownvalue.ListSizeExact(1)),
+					acceptance.StateCheckResourceAttrContains(resourceName, "images.0.label", imageName),
+				},
 			},
 		},
 	})
