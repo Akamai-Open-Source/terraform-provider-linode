@@ -15,7 +15,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	acceptanceTmpl "github.com/linode/terraform-provider-linode/v3/linode/acceptance/tmpl"
@@ -132,18 +135,19 @@ func TestAccResourceNodePool_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttrSet(resName, "disk_encryption"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "external"),
-					resource.TestCheckResourceAttr(resName, "tags.1", poolTag),
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.min", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.max", "2"),
-					resource.TestCheckResourceAttr(resName, "node_count", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk_encryption"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetExact([]knownvalue.Check{
+						knownvalue.StringExact("external"),
+						knownvalue.StringExact(poolTag),
+					})),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("min"), knownvalue.Int64Exact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("max"), knownvalue.Int64Exact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("node_count"), knownvalue.Int64Exact(1)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -153,11 +157,11 @@ func TestAccResourceNodePool_basic(t *testing.T) {
 			},
 			{
 				Config: updateConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.min", "2"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.max", "3"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("min"), knownvalue.Int64Exact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("max"), knownvalue.Int64Exact(3)),
+				},
 			},
 		},
 	})
@@ -188,24 +192,25 @@ func TestAccResourceNodePool_disableAutoscaling(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "external"),
-					resource.TestCheckResourceAttr(resName, "tags.1", poolTag),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.min", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.max", "2"),
-					resource.TestCheckResourceAttr(resName, "node_count", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetExact([]knownvalue.Check{
+						knownvalue.StringExact("external"),
+						knownvalue.StringExact(poolTag),
+					})),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("min"), knownvalue.Int64Exact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("max"), knownvalue.Int64Exact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("node_count"), knownvalue.Int64Exact(1)),
+				},
 			},
 			{
 				Config: updateConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "0"),
-					resource.TestCheckResourceAttr(resName, "node_count", "2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("node_count"), knownvalue.Int64Exact(2)),
+				},
 			},
 		},
 	})
@@ -236,24 +241,25 @@ func TestAccResourceNodePool_enableAutoscaling(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "external"),
-					resource.TestCheckResourceAttr(resName, "tags.1", poolTag),
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "0"),
-					resource.TestCheckResourceAttr(resName, "node_count", "2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetExact([]knownvalue.Check{
+						knownvalue.StringExact("external"),
+						knownvalue.StringExact(poolTag),
+					})),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("node_count"), knownvalue.Int64Exact(2)),
+				},
 			},
 			{
 				Config: updateConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.min", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.max", "2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("min"), knownvalue.Int64Exact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("max"), knownvalue.Int64Exact(2)),
+				},
 			},
 		},
 	})
@@ -283,14 +289,15 @@ func TestAccResourceNodePool_update_type(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "external"),
-					resource.TestCheckResourceAttr(resName, "tags.1", poolTag),
-					resource.TestCheckResourceAttr(resName, "node_count", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.SetExact([]knownvalue.Check{
+						knownvalue.StringExact("external"),
+						knownvalue.StringExact(poolTag),
+					})),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("node_count"), knownvalue.Int64Exact(1)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -300,10 +307,10 @@ func TestAccResourceNodePool_update_type(t *testing.T) {
 			},
 			{
 				Config: updateConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-2")),
+				},
 			},
 		},
 	})
@@ -351,15 +358,15 @@ func TestAccResourceNodePool_taints_labels(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: configWithTaintsLabels,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "taint.#", "1"),
-					resource.TestCheckResourceAttr(resName, "taint.0.effect", "PreferNoSchedule"),
-					resource.TestCheckResourceAttr(resName, "taint.0.key", "foo"),
-					resource.TestCheckResourceAttr(resName, "taint.0.value", "bar"),
-					resource.TestCheckResourceAttr(resName, "labels.%", "1"),
-					resource.TestCheckResourceAttr(resName, "labels.foo", "bar"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("effect"), knownvalue.StringExact("PreferNoSchedule")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("key"), knownvalue.StringExact("foo")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("value"), knownvalue.StringExact("bar")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels"), knownvalue.MapSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels").AtMapKey("foo"), knownvalue.StringExact("bar")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -369,11 +376,11 @@ func TestAccResourceNodePool_taints_labels(t *testing.T) {
 			},
 			{
 				Config: configWithoutTaintsLabels,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "taint.#", "0"),
-					resource.TestCheckResourceAttr(resName, "labels.%", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint"), knownvalue.SetSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels"), knownvalue.MapSizeExact(0)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -383,27 +390,27 @@ func TestAccResourceNodePool_taints_labels(t *testing.T) {
 			},
 			{
 				Config: configWithTaintsLabels,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "taint.#", "1"),
-					resource.TestCheckResourceAttr(resName, "taint.0.effect", "PreferNoSchedule"),
-					resource.TestCheckResourceAttr(resName, "taint.0.key", "foo"),
-					resource.TestCheckResourceAttr(resName, "taint.0.value", "bar"),
-					resource.TestCheckResourceAttr(resName, "labels.%", "1"),
-					resource.TestCheckResourceAttr(resName, "labels.foo", "bar"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("effect"), knownvalue.StringExact("PreferNoSchedule")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("key"), knownvalue.StringExact("foo")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("value"), knownvalue.StringExact("bar")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels"), knownvalue.MapSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels").AtMapKey("foo"), knownvalue.StringExact("bar")),
+				},
 			},
 			{
 				Config: configWithUpdatedTaintsLabels,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "taint.#", "1"),
-					resource.TestCheckResourceAttr(resName, "taint.0.effect", "NoExecute"),
-					resource.TestCheckResourceAttr(resName, "taint.0.key", "bar"),
-					resource.TestCheckResourceAttr(resName, "taint.0.value", "baz"),
-					resource.TestCheckResourceAttr(resName, "labels.%", "1"),
-					resource.TestCheckResourceAttr(resName, "labels.bar", "baz"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint"), knownvalue.SetSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("effect"), knownvalue.StringExact("NoExecute")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("key"), knownvalue.StringExact("bar")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("taint").AtSliceIndex(0).AtMapKey("value"), knownvalue.StringExact("baz")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels"), knownvalue.MapSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("labels").AtMapKey("bar"), knownvalue.StringExact("baz")),
+				},
 			},
 		},
 	})
@@ -455,12 +462,12 @@ func TestAccResourceNodePoolEnterprise_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "k8s_version", enterpriseK8sVersion),
-					resource.TestCheckResourceAttr(resName, "update_strategy", "on_recycle"),
-					resource.TestCheckResourceAttr(resName, "label", "foobar-pool"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("k8s_version"), knownvalue.StringExact(enterpriseK8sVersion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("update_strategy"), knownvalue.StringExact("on_recycle")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("foobar-pool")),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -470,12 +477,12 @@ func TestAccResourceNodePoolEnterprise_basic(t *testing.T) {
 			},
 			{
 				Config: updateConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "k8s_version", enterpriseK8sVersion),
-					resource.TestCheckResourceAttr(resName, "update_strategy", "rolling_update"),
-					resource.TestCheckResourceAttr(resName, "label", ""),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("k8s_version"), knownvalue.StringExact(enterpriseK8sVersion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("update_strategy"), knownvalue.StringExact("rolling_update")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact("")),
+				},
 			},
 		},
 	})
@@ -535,10 +542,10 @@ func TestAccResourceNodePoolEnterprise_withFirewall(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "firewall_id", fmt.Sprintf("%d", firewall.ID)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("firewall_id"), knownvalue.Int64Exact(int64(firewall.ID))),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -580,19 +587,19 @@ func TestAccResourceNodePool_disableAutoscalingExplicitNodeCount(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: createConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.min", "1"),
-					resource.TestCheckResourceAttr(resName, "autoscaler.0.max", "4"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("min"), knownvalue.Int64Exact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler").AtSliceIndex(0).AtMapKey("max"), knownvalue.Int64Exact(4)),
+				},
 			},
 			{
 				Config: dropAutoscalerConfig,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodePoolExists,
-					resource.TestCheckResourceAttr(resName, "autoscaler.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodePoolExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("autoscaler"), knownvalue.ListSizeExact(0)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -615,6 +622,48 @@ func checkNodePoolExists(s *terraform.State) error {
 		return fmt.Errorf("Error retrieving state of node pool %d: %v", poolID, err)
 	}
 	return nil
+}
+
+func stateCheckNodePoolExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_lke_node_pool" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing ID %v to int", idVal)
+				return
+			}
+
+			clusterIDVal, ok := rc.AttributeValues["cluster_id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No cluster_id is set")
+				return
+			}
+
+			// cluster_id is Int64Attribute in the schema, so tfjson stores it as float64
+			clusterIDInt := int(clusterIDVal.(float64))
+
+			_, err = client.GetLKENodePool(context.Background(), clusterIDInt, id)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error retrieving state of node pool %d: %v", id, err)
+				return
+			}
+			return
+		}
+
+		resp.Error = fmt.Errorf("Error finding lke_node_pool")
+	})
 }
 
 func checkNodePoolDestroy(s *terraform.State) error {
