@@ -43,6 +43,9 @@ func CheckMySQLDatabaseExists(name string, db *linodego.MySQLDatabase) resource.
 	}
 }
 
+// StateCheckMySQLDatabaseExists returns a statecheck.StateCheck that verifies
+// a MySQL database resource exists in the Terraform state and in the Linode API.
+// It populates the provided db pointer with the API response for downstream assertions.
 func StateCheckMySQLDatabaseExists(name string, db *linodego.MySQLDatabase) statecheck.StateCheck {
 	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		client := TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
@@ -57,7 +60,7 @@ func StateCheckMySQLDatabaseExists(name string, db *linodego.MySQLDatabase) stat
 					resp.Error = fmt.Errorf("No ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}
@@ -116,6 +119,9 @@ func CheckPostgresDatabaseExists(name string, db *linodego.PostgresDatabase) res
 	}
 }
 
+// StateCheckPostgresDatabaseExists returns a statecheck.StateCheck that verifies
+// a PostgreSQL database resource exists in the Terraform state and in the Linode API.
+// It populates the provided db pointer with the API response for downstream assertions.
 func StateCheckPostgresDatabaseExists(name string, db *linodego.PostgresDatabase) statecheck.StateCheck {
 	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		client := TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
@@ -129,7 +135,7 @@ func StateCheckPostgresDatabaseExists(name string, db *linodego.PostgresDatabase
 					resp.Error = fmt.Errorf("No ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}

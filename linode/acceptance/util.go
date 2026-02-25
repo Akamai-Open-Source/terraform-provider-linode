@@ -320,11 +320,36 @@ func CheckResourceAttrGreaterThan(resName, path string, target int) resource.Tes
 // StateCheckResourceAttrGreaterThan is the StateCheck equivalent of CheckResourceAttrGreaterThan.
 // It validates that a resource attribute's integer value is strictly greater than the target.
 // Handles string, float64, and json.Number representations from the tfjson state.
+// For flatmap-style ".#" suffix paths (e.g., "items.#"), it automatically resolves
+// the base attribute as a list/set and compares its length against the target.
 func StateCheckResourceAttrGreaterThan(resName, path string, target int) statecheck.StateCheck {
 	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 		for _, rc := range req.State.Values.RootModule.Resources {
 			if rc.Address != resName {
 				continue
+			}
+
+			// Handle flatmap-style ".#" suffix for list/set length checks.
+			// In tfjson state, list/set attributes are stored as []interface{}
+			// under their base attribute name, not with ".#" count suffixes.
+			if strings.HasSuffix(path, ".#") {
+				basePath := strings.TrimSuffix(path, ".#")
+				listVal, ok := rc.AttributeValues[basePath]
+				if !ok {
+					resp.Error = fmt.Errorf("attribute %s does not exist", basePath)
+					return
+				}
+
+				list, ok := listVal.([]interface{})
+				if !ok {
+					resp.Error = fmt.Errorf("attribute %s is not a list/set (got %T)", basePath, listVal)
+					return
+				}
+
+				if len(list) <= target {
+					resp.Error = fmt.Errorf("%d <= %d", len(list), target)
+				}
+				return
 			}
 
 			value, ok := rc.AttributeValues[path]
@@ -701,7 +726,7 @@ func StateCheckVolumeExists(name string, volume *linodego.Volume) statecheck.Sta
 					resp.Error = fmt.Errorf("No ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}
@@ -778,7 +803,7 @@ func StateCheckFirewallExists(name string, firewall *linodego.Firewall) stateche
 					resp.Error = fmt.Errorf("No ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}
@@ -857,7 +882,7 @@ func StateCheckEventAbsent(name string, entityType linodego.EntityType, action l
 					resp.Error = fmt.Errorf("no ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}

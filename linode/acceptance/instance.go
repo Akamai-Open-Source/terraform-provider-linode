@@ -58,7 +58,7 @@ func StateCheckInstanceExists(name string, instance *linodego.Instance) stateche
 					resp.Error = fmt.Errorf("No ID is set for %s", name)
 					return
 				}
-				resourceID = idVal.(string)
+				resourceID = fmt.Sprintf("%v", idVal)
 				break
 			}
 		}

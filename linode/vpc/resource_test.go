@@ -349,7 +349,7 @@ func stateCheckVPCExists() statecheck.StateCheck {
 				return
 			}
 
-			id, err := strconv.Atoi(idVal.(string))
+			id, err := strconv.Atoi(fmt.Sprintf("%v", idVal))
 			if err != nil {
 				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
 				return
