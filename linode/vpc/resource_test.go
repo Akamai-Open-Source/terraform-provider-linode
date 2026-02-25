@@ -76,15 +76,39 @@ func TestAccResourceVPC_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, vpcLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCExists,
-					resource.TestCheckResourceAttr(resName, "label", vpcLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "description"),
-					resource.TestCheckResourceAttrSet(resName, "region"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(vpcLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("description"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("region"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("updated"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -107,22 +131,50 @@ func TestAccResourceVPC_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, vpcLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCExists,
-					resource.TestCheckResourceAttr(resName, "label", vpcLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(vpcLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, vpcLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s-renamed", vpcLabel)),
-					resource.TestCheckResourceAttr(resName, "description", "some description"),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "updated"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(fmt.Sprintf("%s-renamed", vpcLabel)),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("description"),
+						knownvalue.StringExact("some description"),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("updated"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -149,8 +201,8 @@ func TestAccResourceVPC_dualStack(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DualStack(t, vpcLabel, targetRegion),
-				Check:  checkVPCExists,
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("label"),
@@ -180,8 +232,8 @@ func TestAccResourceVPC_dualStack(t *testing.T) {
 			},
 			{
 				Config: tmpl.DualStack(t, vpcLabel, targetRegion),
-				Check:  checkVPCExists,
 				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
 					statecheck.ExpectKnownValue(
 						resName,
 						tfjsonpath.New("label"),
@@ -250,12 +302,24 @@ func TestAccResourceLinodeVPC_update_InvalidLabel(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, vpcLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					checkVPCExists,
-					resource.TestCheckResourceAttr(resName, "label", vpcLabel),
-					resource.TestCheckResourceAttrSet(resName, "id"),
-					resource.TestCheckResourceAttrSet(resName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckVPCExists(),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("label"),
+						knownvalue.StringExact(vpcLabel),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+				},
 			},
 			{
 				Config:      tmpl.Updates(t, invalidLabel, testRegion),
@@ -267,6 +331,37 @@ func TestAccResourceLinodeVPC_update_InvalidLabel(t *testing.T) {
 				ImportStateVerify: true,
 			},
 		},
+	})
+}
+
+func stateCheckVPCExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_vpc" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			id, err := strconv.Atoi(idVal.(string))
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idVal)
+				return
+			}
+
+			_, err = client.GetVPC(context.Background(), id)
+			if err != nil {
+				labelVal := rc.AttributeValues["label"]
+				resp.Error = fmt.Errorf("Error retrieving state of VPC %s: %s", labelVal, err)
+				return
+			}
+		}
 	})
 }
 
