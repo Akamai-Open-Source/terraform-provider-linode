@@ -8,9 +8,13 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	acceptanceTmpl "github.com/linode/terraform-provider-linode/v3/linode/acceptance/tmpl"
@@ -59,19 +63,19 @@ func TestAccResourceFirewallDevice_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Basic(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttrSet(deviceName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(deviceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+				},
 			},
 			// Refresh the state and verify the attachment
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Basic(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttr(firewallName, "devices.#", "1"),
-					resource.TestCheckResourceAttrPair(firewallName, "linodes.0", instanceName, "id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("devices"), knownvalue.ListSizeExact(1)),
+					statecheck.CompareValuePairs(firewallName, tfjsonpath.New("linodes").AtSliceIndex(0), instanceName, tfjsonpath.New("id"), compare.ValuesSame()),
+				},
 			},
 			{
 				ResourceName:      deviceName,
@@ -81,18 +85,18 @@ func TestAccResourceFirewallDevice_basic_smoke(t *testing.T) {
 			},
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Detached(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+				},
 			},
 			// Refresh the state and verify the detachment
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Detached(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttr(firewallName, "devices.#", "0"),
-					resource.TestCheckResourceAttr(firewallName, "linodes.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("devices"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("linodes"), knownvalue.SetSizeExact(0)),
+				},
 			},
 		},
 	})
@@ -116,19 +120,19 @@ func TestAccResourceFirewallDevice_withNodeBalancer(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.WithNodeBalancer(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttrSet(deviceName, "created"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(deviceName, tfjsonpath.New("created"), knownvalue.NotNull()),
+				},
 			},
 			// Refresh the state and verify the attachment
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.WithNodeBalancer(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttr(firewallName, "devices.#", "1"),
-					resource.TestCheckResourceAttrPair(firewallName, "nodebalancers.0", nodebalancerName, "id"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("devices"), knownvalue.ListSizeExact(1)),
+					statecheck.CompareValuePairs(firewallName, tfjsonpath.New("nodebalancers").AtSliceIndex(0), nodebalancerName, tfjsonpath.New("id"), compare.ValuesSame()),
+				},
 			},
 			{
 				ResourceName:      deviceName,
@@ -138,18 +142,18 @@ func TestAccResourceFirewallDevice_withNodeBalancer(t *testing.T) {
 			},
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Detached(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+				},
 			},
 			// Refresh the state and verify the detachment
 			{
 				Config: acceptanceTmpl.ProviderNoPoll(t) + tmpl.Detached(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckFirewallExists(firewallName, &firewall),
-					resource.TestCheckResourceAttr(firewallName, "devices.#", "0"),
-					resource.TestCheckResourceAttr(firewallName, "linodes.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckFirewallExists(firewallName, &firewall),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("devices"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(firewallName, tfjsonpath.New("linodes"), knownvalue.SetSizeExact(0)),
+				},
 			},
 		},
 	})
