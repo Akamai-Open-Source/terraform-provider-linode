@@ -11,7 +11,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -36,17 +39,16 @@ func TestAccIPv6Range_basic(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Basic(t, instLabel, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkIPv6RangeExists(resName, nil),
-						resource.TestCheckResourceAttr(resName, "prefix_length", "64"),
-						resource.TestCheckResourceAttr(resName, "is_bgp", "false"),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-						resource.TestCheckResourceAttrSet(resName, "range"),
-						resource.TestCheckResourceAttrSet(resName, "linode_id"),
-						resource.TestCheckResourceAttrSet(resName, "linodes.0"),
-						resource.TestCheckResourceAttrSet(resName, "route_target"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						checkIPv6RangeExistsStateCheck(resName, nil),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("prefix_length"), knownvalue.Int64Exact(64)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_bgp"), knownvalue.Bool(false)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("range"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linode_id"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linodes").AtSliceIndex(0), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("route_target"), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:            resName,
@@ -74,16 +76,15 @@ func TestAccIPv6Range_routeTarget(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.RouteTarget(t, instLabel, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkIPv6RangeExists(resName, nil),
-						resource.TestCheckResourceAttr(resName, "prefix_length", "64"),
-						resource.TestCheckResourceAttr(resName, "is_bgp", "false"),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-						resource.TestCheckResourceAttrSet(resName, "range"),
-						resource.TestCheckResourceAttrSet(resName, "route_target"),
-						resource.TestCheckResourceAttrSet(resName, "linodes.0"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						checkIPv6RangeExistsStateCheck(resName, nil),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("prefix_length"), knownvalue.Int64Exact(64)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_bgp"), knownvalue.Bool(false)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("range"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("route_target"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linodes").AtSliceIndex(0), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:            resName,
@@ -133,37 +134,34 @@ func TestAccIPv6Range_reassignment(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.ReassignmentStep1(t, instLabel, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkIPv6RangeExists(resName, nil),
-						acceptance.CheckInstanceExists(instance1ResName, &instance1),
-						acceptance.CheckInstanceExists(instance2ResName, &instance2),
-
-						resource.TestCheckResourceAttr(resName, "prefix_length", "64"),
-						resource.TestCheckResourceAttr(resName, "is_bgp", "false"),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-						resource.TestCheckResourceAttrSet(resName, "range"),
-						resource.TestCheckResourceAttrSet(resName, "linode_id"),
-						resource.TestCheckResourceAttrSet(resName, "linodes.0"),
-						resource.TestCheckResourceAttrSet(resName, "route_target"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						checkIPv6RangeExistsStateCheck(resName, nil),
+						acceptance.StateCheckInstanceExists(instance1ResName, &instance1),
+						acceptance.StateCheckInstanceExists(instance2ResName, &instance2),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("prefix_length"), knownvalue.Int64Exact(64)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_bgp"), knownvalue.Bool(false)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("range"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linode_id"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linodes").AtSliceIndex(0), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("route_target"), knownvalue.NotNull()),
+					},
 				},
 				{
 					PreConfig: func() {
 						validateInstanceIPv6Assignments(t, instance1.ID, instance2.ID)
 					},
 					Config: tmpl.ReassignmentStep2(t, instLabel, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkIPv6RangeExists(resName, nil),
-						resource.TestCheckResourceAttr(resName, "prefix_length", "64"),
-						resource.TestCheckResourceAttr(resName, "is_bgp", "false"),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-
-						resource.TestCheckResourceAttrSet(resName, "range"),
-						resource.TestCheckResourceAttrSet(resName, "linode_id"),
-						resource.TestCheckResourceAttrSet(resName, "linodes.0"),
-						resource.TestCheckResourceAttrSet(resName, "route_target"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						checkIPv6RangeExistsStateCheck(resName, nil),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("prefix_length"), knownvalue.Int64Exact(64)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("is_bgp"), knownvalue.Bool(false)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("range"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linode_id"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("linodes").AtSliceIndex(0), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("route_target"), knownvalue.NotNull()),
+					},
 				},
 				{
 					Config: tmpl.ReassignmentStep2(t, instLabel, testRegion),
@@ -191,7 +189,9 @@ func TestAccIPv6Range_raceCondition(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.RaceCondition(t, instLabel, testRegion),
-					Check:  checkIPv6RangeNoDuplicates,
+					ConfigStateChecks: []statecheck.StateCheck{
+						checkIPv6RangeNoDuplicatesStateCheck,
+					},
 				},
 			},
 		})
@@ -222,6 +222,43 @@ func checkIPv6RangeExists(name string, ipv6Range *linodego.IPv6Range) resource.T
 
 		return nil
 	}
+}
+
+// checkIPv6RangeExistsStateCheck is the ConfigStateChecks-compatible equivalent of checkIPv6RangeExists.
+// It verifies that an IPv6 range resource exists in the Terraform state and populates
+// the provided ipv6Range pointer with the API response for downstream assertions.
+func checkIPv6RangeExistsStateCheck(name string, ipv6Range *linodego.IPv6Range) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("no ID is set for %s", name)
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("not found: %s", name)
+			return
+		}
+
+		found, err := client.GetIPv6Range(context.Background(), resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to retrieve state of ipv6 range %s: %s", resourceID, err)
+			return
+		}
+
+		if ipv6Range != nil {
+			*ipv6Range = *found
+		}
+	})
 }
 
 func checkIPv6RangeDestroy(s *terraform.State) error {
@@ -272,6 +309,34 @@ func checkIPv6RangeNoDuplicates(s *terraform.State) error {
 
 	return nil
 }
+
+// checkIPv6RangeNoDuplicatesStateCheck is the ConfigStateChecks-compatible equivalent of
+// checkIPv6RangeNoDuplicates. It verifies that no duplicate IPv6 range resources exist
+// in the Terraform state by checking for unique resource IDs.
+var checkIPv6RangeNoDuplicatesStateCheck = acceptance.CustomStateCheck(
+	func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		existingRanges := make(map[string]bool)
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_ipv6_range" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				continue
+			}
+
+			id := idVal.(string)
+			if _, exists := existingRanges[id]; exists {
+				resp.Error = fmt.Errorf("duplicate range found: %s", id)
+				return
+			}
+
+			existingRanges[id] = true
+		}
+	},
+)
 
 func validateInstanceIPv6Assignments(t testing.TB, assignedID, unassignedID int) {
 	client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
