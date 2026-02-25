@@ -209,11 +209,11 @@ func TestAccResourceBucket_basic_legacy_smoke(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.BasicLegacy(t, objectStorageBucketName, testCluster),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttrSet(resName, "hostname"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:      resName,
@@ -239,11 +239,11 @@ func TestAccResourceBucket_endpoint_type(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.EndpointType(t, objectStorageBucketName, testRegion, testEndpointType),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttrSet(resName, "hostname"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:      resName,
@@ -269,10 +269,8 @@ func TestAccResourceBucket_endpoint_url(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.EndpointURL(t, objectStorageBucketName, testRegion, testEndpointURL),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-					),
 					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
 						statecheck.ExpectKnownValue(
 							resName,
 							tfjsonpath.New("label"),
@@ -309,11 +307,11 @@ func TestAccResourceBucket_basic_smoke(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Basic(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttrSet(resName, "hostname"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("hostname"), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:      resName,
@@ -339,21 +337,21 @@ func TestAccResourceBucket_access(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Access(t, objectStorageBucketName, testRegion, "public-read", true),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "acl", "public-read"),
-						resource.TestCheckResourceAttr(resName, "cors_enabled", "true"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("acl"), knownvalue.StringExact("public-read")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cors_enabled"), knownvalue.StringExact("true")),
+					},
 				},
 				{
 					Config: tmpl.Access(t, objectStorageBucketName, testRegion, "private", false),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "acl", "private"),
-						resource.TestCheckResourceAttr(resName, "cors_enabled", "false"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("acl"), knownvalue.StringExact("private")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cors_enabled"), knownvalue.StringExact("false")),
+					},
 				},
 			},
 		})
@@ -375,19 +373,19 @@ func TestAccResourceBucket_versioning(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Versioning(t, objectStorageBucketName, testRegion, objectStorageKeyName, true),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "versioning", "true"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("versioning"), knownvalue.StringExact("true")),
+					},
 				},
 				{
 					Config: tmpl.Versioning(t, objectStorageBucketName, testRegion, objectStorageKeyName, false),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "versioning", "false"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("versioning"), knownvalue.StringExact("false")),
+					},
 				},
 			},
 		})
@@ -409,42 +407,42 @@ func TestAccResourceBucket_lifecycle(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.LifeCycle(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "1"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.id", "test-rule"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.prefix", "tf"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.enabled", "true"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.expiration.#", "1"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.abort_incomplete_multipart_upload_days", "5"),
-						resource.TestCheckResourceAttrSet(resName, "lifecycle_rule.0.expiration.0.date"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact("test-rule")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("prefix"), knownvalue.StringExact("tf")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("enabled"), knownvalue.StringExact("true")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("abort_incomplete_multipart_upload_days"), knownvalue.StringExact("5")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration").AtSliceIndex(0).AtMapKey("date"), knownvalue.NotNull()),
+					},
 				},
 				{
 					Config: tmpl.LifeCycleUpdates(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "1"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.id", "test-rule-update"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.prefix", "tf-update"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.enabled", "false"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.abort_incomplete_multipart_upload_days", "42"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.expiration.#", "1"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.expiration.0.days", "37"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("id"), knownvalue.StringExact("test-rule-update")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("prefix"), knownvalue.StringExact("tf-update")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("enabled"), knownvalue.StringExact("false")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("abort_incomplete_multipart_upload_days"), knownvalue.StringExact("42")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration").AtSliceIndex(0).AtMapKey("days"), knownvalue.StringExact("37")),
+					},
 				},
 				{
 					Config: tmpl.LifeCycleRemoved(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "0"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(0)),
+					},
 				},
 			},
 		})
@@ -466,18 +464,18 @@ func TestAccResourceBucket_lifecycleNoID(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.LifeCycleNoID(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "1"),
-						resource.TestCheckResourceAttrSet(resName, "lifecycle_rule.0.id"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.prefix", "tf"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.enabled", "true"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.expiration.#", "1"),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.0.abort_incomplete_multipart_upload_days", "5"),
-						resource.TestCheckResourceAttrSet(resName, "lifecycle_rule.0.expiration.0.date"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("prefix"), knownvalue.StringExact("tf")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("enabled"), knownvalue.StringExact("true")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("abort_incomplete_multipart_upload_days"), knownvalue.StringExact("5")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule").AtSliceIndex(0).AtMapKey("expiration").AtSliceIndex(0).AtMapKey("date"), knownvalue.NotNull()),
+					},
 				},
 			},
 		})
@@ -512,10 +510,10 @@ func TestAccResourceBucket_cert(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Cert(t, objectStorageBucketName, testRegion, cert, key),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+					},
 				},
 				{
 					Config:      tmpl.Cert(t, objectStorageBucketName, testRegion, invalidCert, invalidKey),
@@ -523,17 +521,17 @@ func TestAccResourceBucket_cert(t *testing.T) {
 				},
 				{
 					Config: tmpl.Cert(t, objectStorageBucketName, testRegion, otherCert, otherKey),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+					},
 				},
 				{
 					Config: tmpl.Basic(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+					},
 				},
 			},
 		})
@@ -554,10 +552,10 @@ func TestAccResourceBucket_dataSource(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.ClusterDataBasic(t, objectStorageBucketName, testCluster),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+					},
 				},
 				{
 					ResourceName:      resName,
@@ -583,17 +581,17 @@ func TestAccResourceBucket_update(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.Basic(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+					},
 				},
 				{
 					Config: tmpl.Updates(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						checkBucketExists,
-						resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s-renamed", objectStorageBucketName)),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketExists(),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s-renamed", objectStorageBucketName))),
+					},
 				},
 			},
 		})
@@ -615,12 +613,12 @@ func TestAccResourceBucket_credsConfiged(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.CredsConfiged(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "1"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(1)),
+					},
 				},
 			},
 		})
@@ -642,12 +640,12 @@ func TestAccResourceBucket_tempKeys(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.TempKeys(t, objectStorageBucketName, testRegion, objectStorageKeyName),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "lifecycle_rule.#", "1"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("lifecycle_rule"), knownvalue.ListSizeExact(1)),
+					},
 				},
 			},
 		})
@@ -669,11 +667,11 @@ func TestAccResourceBucket_forceDelete(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.ForceDelete(t, objectStorageBucketName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(resName, "label", objectStorageBucketName),
-						resource.TestCheckResourceAttr(resName, "cluster", testCluster),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(objectStorageBucketName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("cluster"), knownvalue.StringExact(testCluster)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					},
 				},
 				{
 					PreConfig: func() {
@@ -713,7 +711,9 @@ func TestAccResourceBucket_forceDelete(t *testing.T) {
 						s3client.PutObject(context.Background(), putInput)
 					},
 					Config: tmpl.ForceDelete_Empty(t),
-					Check:  resource.ComposeTestCheckFunc(checkBucketDestroy),
+					ConfigStateChecks: []statecheck.StateCheck{
+						stateCheckBucketDestroy(),
+					},
 				},
 			},
 		})
@@ -738,6 +738,76 @@ func TestAccResourceBucket_invalid_region(t *testing.T) {
 				),
 			},
 		},
+	})
+}
+
+func stateCheckBucketExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_object_storage_objbucket" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				resp.Error = fmt.Errorf("No ID is set")
+				return
+			}
+
+			cluster, label, err := objbucket.DecodeBucketID(ctx, idVal.(string), &schema.ResourceData{})
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %s, %s", idVal.(string), err)
+				return
+			}
+
+			_, err = client.GetObjectStorageBucket(ctx, cluster, label)
+			if err != nil {
+				labelVal, _ := rc.AttributeValues["label"]
+				resp.Error = fmt.Errorf("Error retrieving state of ObjectStorageBucket %s: %s", labelVal, err)
+				return
+			}
+		}
+	})
+}
+
+func stateCheckBucketDestroy() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_object_storage_bucket" {
+				continue
+			}
+
+			idVal, ok := rc.AttributeValues["id"]
+			if !ok {
+				continue
+			}
+
+			idStr := idVal.(string)
+			cluster, label, err := objbucket.DecodeBucketID(ctx, idStr, &schema.ResourceData{})
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %s", idStr)
+				return
+			}
+			if label == "" {
+				resp.Error = fmt.Errorf("Would have considered %s as %s", idStr, label)
+				return
+			}
+
+			_, err = client.GetObjectStorageBucket(ctx, cluster, label)
+			if err == nil {
+				resp.Error = fmt.Errorf("Linode ObjectStorageBucket with id %s still exists", idStr)
+				return
+			}
+
+			if apiErr, ok := err.(*linodego.Error); ok && apiErr.Code != 404 && apiErr.Code != 500 {
+				resp.Error = fmt.Errorf("Error requesting Linode ObjectStorageBucket with id %s: %s", idStr, err)
+				return
+			}
+		}
 	})
 }
 
