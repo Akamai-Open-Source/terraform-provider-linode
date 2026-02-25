@@ -10,6 +10,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/volumes/tmpl"
 )
@@ -66,11 +69,11 @@ func TestAccDataSourceVolume_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, volumeName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttr(resourceName, "volumes.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "volumes.0.region", testRegion),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("volumes"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("volumes").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+				},
 			},
 		},
 	})
