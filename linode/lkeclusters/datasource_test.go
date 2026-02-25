@@ -10,6 +10,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/lkeclusters/tmpl"
 )
@@ -66,22 +69,22 @@ func TestAccDataSourceLKEClusters_basic(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.DataBasic(t, clusterName, k8sVersionLatest, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckResourceAttrGreaterThan(dataSourceName, "lke_clusters.#", 1),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckResourceAttrGreaterThan(dataSourceName, "lke_clusters.#", 1),
+					},
 				},
 				{
 					Config: tmpl.DataFilter(t, clusterName, k8sVersionLatest, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.#", "1"),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.label", clusterName),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.region", testRegion),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.k8s_version", k8sVersionLatest),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.status", "ready"),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.tags.#", "1"),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.tier", "standard"),
-						resource.TestCheckResourceAttr(dataSourceName, "lke_clusters.0.control_plane.high_availability", "false"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(clusterName)),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("k8s_version"), knownvalue.StringExact(k8sVersionLatest)),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("status"), knownvalue.StringExact("ready")),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("tags"), knownvalue.SetSizeExact(1)),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("tier"), knownvalue.StringExact("standard")),
+						statecheck.ExpectKnownValue(dataSourceName, tfjsonpath.New("lke_clusters").AtSliceIndex(0).AtMapKey("control_plane").AtMapKey("high_availability"), knownvalue.Bool(false)),
+					},
 				},
 			},
 		})
