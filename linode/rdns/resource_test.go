@@ -9,9 +9,13 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/rdns/tmpl"
@@ -71,10 +75,10 @@ func TestAccResourceRDNS_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, linodeLabel, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`.nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`.nip.io$`))),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -100,27 +104,27 @@ func TestAccResourceRDNS_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestCheckResourceAttrPair(resName, "address", "linode_instance.foobar", "ip_address"),
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`([0-9]{1,3}\.){4}nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.CompareValuePairs(resName, tfjsonpath.New("address"), "linode_instance.foobar", tfjsonpath.New("ip_address"), compare.ValuesSame()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`([0-9]{1,3}\.){4}nip.io$`))),
+				},
 			},
 			{
 				Config: tmpl.Changed(t, label, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`))),
+				},
 			},
 			{
 				Config: tmpl.Deleted(t, label, testRegion),
 			},
 			{
 				Config: tmpl.Deleted(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestMatchResourceAttr("data.linode_networking_ip.foobar", "rdns", regexp.MustCompile(`.ip.linodeusercontent.com$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue("data.linode_networking_ip.foobar", tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`.ip.linodeusercontent.com$`))),
+				},
 			},
 		},
 	})
@@ -141,27 +145,27 @@ func TestAccResourceRDNS_waitForAvailable(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestCheckResourceAttrPair(resName, "address", "linode_instance.foobar", "ip_address"),
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`([0-9]{1,3}\.){4}nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.CompareValuePairs(resName, tfjsonpath.New("address"), "linode_instance.foobar", tfjsonpath.New("ip_address"), compare.ValuesSame()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`([0-9]{1,3}\.){4}nip.io$`))),
+				},
 			},
 			{
 				Config: tmpl.Changed(t, label, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`))),
+				},
 			},
 			{
 				Config: tmpl.Deleted(t, label, testRegion),
 			},
 			{
 				Config: tmpl.Deleted(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestMatchResourceAttr("data.linode_networking_ip.foobar", "rdns", regexp.MustCompile(`.ip.linodeusercontent.com$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue("data.linode_networking_ip.foobar", tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`.ip.linodeusercontent.com$`))),
+				},
 			},
 		},
 	})
@@ -184,17 +188,17 @@ func TestAccResourceRDNS_waitForAvailableWithTimeout(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithTimeout(t, linodeLabel, testRegion, createTimeout, updateTimeout),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`.nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`.nip.io$`))),
+				},
 			},
 			{
 				Config: tmpl.WithTimeoutUpdated(t, linodeLabel, testRegion, createTimeout, updateTimeout),
-				Check: resource.ComposeTestCheckFunc(
-					checkRDNSExists,
-					resource.TestMatchResourceAttr(resName, "rdns", regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckRDNSExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("rdns"), knownvalue.StringRegexp(regexp.MustCompile(`([0-9]{1,3}\-){3}[0-9]{1,3}.nip.io$`))),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -203,6 +207,31 @@ func TestAccResourceRDNS_waitForAvailableWithTimeout(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"wait_for_available", "firewall_id"},
 			},
 		},
+	})
+}
+
+func stateCheckRDNSExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccFrameworkProvider.Meta.Client
+
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_rdns" {
+				continue
+			}
+
+			address, ok := rc.AttributeValues["address"]
+			if !ok {
+				resp.Error = fmt.Errorf("No address attribute found for RDNS resource")
+				return
+			}
+
+			_, err := client.GetIPAddress(context.Background(), address.(string))
+			if err != nil {
+				rdns := rc.AttributeValues["rdns"]
+				resp.Error = fmt.Errorf("Error retrieving state of RDNS %s: %s", rdns, err)
+				return
+			}
+		}
 	})
 }
 
