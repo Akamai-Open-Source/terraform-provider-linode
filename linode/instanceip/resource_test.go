@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/instanceip/tmpl"
@@ -39,16 +42,16 @@ func TestAccInstanceIP_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, name, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "address"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "gateway"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "prefix"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "rdns"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "subnet_mask"),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "region", testRegion),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "type", "ipv4"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("address"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("gateway"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("prefix"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("rdns"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("subnet_mask"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("type"), knownvalue.StringExact("ipv4")),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -73,16 +76,16 @@ func TestAccInstanceIP_noboot(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.NoBoot(t, name, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "address"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "gateway"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "prefix"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "rdns"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "subnet_mask"),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "region", testRegion),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "type", "ipv4"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("address"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("gateway"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("prefix"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("rdns"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("subnet_mask"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("type"), knownvalue.StringExact("ipv4")),
+				},
 			},
 			{
 				Config: tmpl.NoBoot(t, name, testRegion, true),
@@ -107,16 +110,16 @@ func TestAccInstanceIP_noApply(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, name, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists("linode_instance.foobar", &instance),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "address"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "gateway"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "prefix"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "rdns"),
-					resource.TestCheckResourceAttrSet(testInstanceIPResName, "subnet_mask"),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "region", testRegion),
-					resource.TestCheckResourceAttr(testInstanceIPResName, "type", "ipv4"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists("linode_instance.foobar", &instance),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("address"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("gateway"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("prefix"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("rdns"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("subnet_mask"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(testInstanceIPResName, tfjsonpath.New("type"), knownvalue.StringExact("ipv4")),
+				},
 			},
 			{
 				PreConfig: func() {
