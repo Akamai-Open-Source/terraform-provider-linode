@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
@@ -98,17 +99,17 @@ func TestAccResourceInstance_basic_smoke(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "256"),
-					resource.TestCheckResourceAttrSet(resName, "host_uuid"),
-					resource.TestMatchResourceAttr(resName, "ipv6", regexp.MustCompile(`/128$`)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("256")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("host_uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("ipv6"), knownvalue.StringRegexp(regexp.MustCompile(`/128$`))),
+				},
 			},
 
 			{
@@ -137,17 +138,17 @@ func TestAccResourceInstance_vpu(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.VPU(t, instanceName, acceptance.PublicKeyMaterial, "us-lax", rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g1-accelerated-netint-vpu-t1u1-s"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", "us-lax"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "256"),
-					resource.TestCheckResourceAttrSet(resName, "host_uuid"),
-					resource.TestCheckResourceAttrSet(resName, "specs.0.accelerated_devices"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g1-accelerated-netint-vpu-t1u1-s")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact("us-lax")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("256")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("host_uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("accelerated_devices"), knownvalue.NotNull()),
+				},
 			},
 
 			{
@@ -175,10 +176,10 @@ func TestAccResourceInstance_watchdogDisabled(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WatchdogDisabled(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "watchdog_enabled", "false"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("watchdog_enabled"), knownvalue.StringExact("false")),
+				},
 			},
 			{
 				Config:   tmpl.WatchdogDisabled(t, instanceName, testRegion, rootPass),
@@ -202,15 +203,15 @@ func TestAccResourceInstance_authorizedUsers(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.AuthorizedUsers(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "256"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("256")),
+				},
 			},
 
 			{
@@ -264,36 +265,36 @@ func TestAccResourceInstance_interfaces(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Interfaces(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
 
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
 
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.label", "tf-really-cool-vlan"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("tf-really-cool-vlan")),
+				},
 			},
 			{
 				Config: tmpl.InterfacesUpdate(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "2"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(2)),
 
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "public"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
 
-					resource.TestCheckResourceAttr(resName, "config.0.interface.1.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.1.label", "tf-really-cool-vlan"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact("tf-really-cool-vlan")),
+				},
 			},
 			{
 				Config: tmpl.InterfacesUpdateEmpty(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -320,23 +321,23 @@ func TestAccResourceInstance_config(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithConfig(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "alerts.0.cpu", "60"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("alerts").AtSliceIndex(0).AtMapKey("cpu"), knownvalue.StringExact("60")),
 
-					resource.TestCheckResourceAttrSet(resName, "config.0.id"),
-					resource.TestCheckResourceAttr(resName, "config.0.run_level", "binbash"),
-					resource.TestCheckResourceAttr(resName, "config.0.virt_mode", "fullvirt"),
-					resource.TestCheckResourceAttr(resName, "config.0.memory_limit", "1024"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("run_level"), knownvalue.StringExact("binbash")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("virt_mode"), knownvalue.StringExact("fullvirt")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("memory_limit"), knownvalue.StringExact("1024")),
 
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-				),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+				},
 			},
 
 			{
@@ -364,17 +365,17 @@ func TestAccResourceInstance_configPair(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.MultipleConfigs(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkComputeInstanceConfigs(&instance, testConfig("configa", testConfigKernel("linode/latest-64bit"))),
-					checkComputeInstanceConfigs(&instance, testConfig("configb", testConfigKernel("linode/latest-32bit"))),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("configa", testConfigKernel("linode/latest-64bit"))),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("configb", testConfigKernel("linode/latest-32bit"))),
+				},
 			},
 
 			{
@@ -403,49 +404,49 @@ func TestAccResourceInstance_configInterfaces(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.ConfigInterfaces(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
 
-					resource.TestCheckResourceAttr(resName, "config.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.label", "tf-really-cool-vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("tf-really-cool-vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+				},
 			},
 			{
 				Config: tmpl.ConfigInterfacesMultiple(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.label", "tf-really-cool-vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "config.1.interface.#", "2"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("tf-really-cool-vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(1).AtMapKey("interface"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+				},
 			},
 			{
 				PreConfig: testAccAssertReboot(t, true, &instance),
 				Config:    tmpl.ConfigInterfacesUpdate(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+				},
 			},
 			{
 				PreConfig: testAccAssertReboot(t, true, &instance),
 				Config:    tmpl.ConfigInterfacesUpdateEmpty(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(0)),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -473,29 +474,29 @@ func TestAccResourceInstance_configInterfacesNoReboot(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.ConfigInterfaces(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
 
-					resource.TestCheckResourceAttr(resName, "config.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.label", "tf-really-cool-vlan"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("tf-really-cool-vlan")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+				},
 			},
 			{
 				Config: tmpl.ConfigInterfacesUpdateNoReboot(t, instanceName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resName, "config.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "0"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+				},
 			},
 			{
 				PreConfig: testAccAssertReboot(t, false, &instance),
@@ -547,20 +548,20 @@ func TestAccResourceInstance_disk(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.RawDisk(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-					resource.TestCheckResourceAttr(resName, "config.#", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.#", "1"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					resource.TestCheckResourceAttr(resName, "disk.0.label", "disk"),
-					checkComputeInstanceDisk(&instance, "disk", 3000),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("disk")),
+					stateCheckComputeInstanceDisk(&instance, "disk", 3000),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -588,17 +589,17 @@ func TestAccResourceInstance_diskImage(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Disk(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					checkComputeInstanceDisk(&instance, "disk", 3000),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					stateCheckComputeInstanceDisk(&instance, "disk", 3000),
+				},
 			},
 
 			{
@@ -628,19 +629,16 @@ func TestAccResourceInstance_diskPair(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DiskMultiple(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "512"),
-					checkInstanceDisks(&instance,
-						testDisk("diska", testDiskSize(3000), testDiskExists(&instanceDisk)),
-						testDisk("diskb", testDiskSize(512)),
-					),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("512")),
+					stateCheckInstanceDisks(&instance, testDisk("diska", testDiskSize(3000), testDiskExists(&instanceDisk)), testDisk("diskb", testDiskSize(512)), ),
+				},
 			},
 
 			{
@@ -669,19 +667,17 @@ func TestAccResourceInstance_diskAndConfig(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("config", testConfigKernel("linode/latest-64bit")),
-					),
-					checkComputeInstanceDisk(&instance, "disk", 3000),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit")), ),
+					stateCheckComputeInstanceDisk(&instance, "disk", 3000),
+				},
 			},
 
 			{
@@ -716,23 +712,20 @@ func TestAccResourceInstance_disksAndConfigs(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DiskConfigMultiple(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "512"),
-					checkInstanceDiskExists(&instance, "diska", &instanceDisk),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("512")),
+					stateCheckInstanceDiskExists(&instance, "diska", &instanceDisk),
 					// TODO(displague) create checkInstanceDisks helper (like Configs)
-					checkComputeInstanceDisk(&instance, "diska", 3000),
-					checkComputeInstanceDisk(&instance, "diskb", 512),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("configa", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk)),
-						testConfig("configb", testConfigKernel("linode/grub2"), testConfigComments("won't boot"), testConfigSDBDisk(&instanceDisk)),
-					),
-				),
+					stateCheckComputeInstanceDisk(&instance, "diska", 3000),
+					stateCheckComputeInstanceDisk(&instance, "diskb", 512),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("configa", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk)), testConfig("configb", testConfigKernel("linode/grub2"), testConfigComments("won't boot"), testConfigSDBDisk(&instanceDisk)), ),
+				},
 			},
 
 			{
@@ -765,22 +758,20 @@ func TestAccResourceInstance_volumeAndConfig(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.VolumeConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					acceptance.CheckVolumeExists(volName, &volume),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					acceptance.StateCheckVolumeExists(volName, &volume),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "boot_config_label", "config"),
-					checkInstanceDiskExists(&instance, "disk", &instanceDisk),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("boot_config_label"), knownvalue.StringExact("config")),
+					stateCheckInstanceDiskExists(&instance, "disk", &instanceDisk),
 					// TODO(displague) create checkInstanceDisks helper (like Configs)
-					checkComputeInstanceDisk(&instance, "disk", 3000),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("config", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk), testConfigSDBVolume(&volume)),
-					),
-				),
+					stateCheckComputeInstanceDisk(&instance, "disk", 3000),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk), testConfigSDBVolume(&volume)), ),
+				},
 			},
 
 			{
@@ -808,18 +799,14 @@ func TestAccResourceInstance_privateImage(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.PrivateImage(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					checkInstanceDisks(&instance,
-						testDisk("boot", testDiskSize(1000)),
-						testDisk("swap", testDiskSize(800)),
-						testDisk("logs", testDiskSize(600)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					stateCheckInstanceDisks(&instance, testDisk("boot", testDiskSize(1000)), testDisk("swap", testDiskSize(800)), testDisk("logs", testDiskSize(600)), ),
+				},
 			},
 
 			{
@@ -847,13 +834,13 @@ func TestAccResourceInstance_noImage(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.NoImage(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+				},
 			},
 
 			{
@@ -881,19 +868,19 @@ func TestAccResourceInstance_updateSimple(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_r", instanceName)),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test_r"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_r", instanceName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test_r")),
+				},
 			},
 		},
 	})
@@ -920,19 +907,19 @@ func TestAccResourceInstance_updateMaintenancePolicy(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.MaintenancePolicy(t, instanceName, acceptance.PublicKeyMaterial, region, rootPass, maintenancePolicyMigrate),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "maintenance_policy", maintenancePolicyMigrate),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("maintenance_policy"), knownvalue.StringExact(maintenancePolicyMigrate)),
+				},
 			},
 			{
 				Config: tmpl.MaintenancePolicy(t, instanceName, acceptance.PublicKeyMaterial, region, rootPass, maintenancePolicyPowerOnOff),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "maintenance_policy", maintenancePolicyPowerOnOff),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("maintenance_policy"), knownvalue.StringExact(maintenancePolicyPowerOnOff)),
+				},
 			},
 		},
 	})
@@ -954,29 +941,29 @@ func TestAccResourceInstance_configUpdate(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.WithConfig(t, instanceName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckInstanceExists(resName, &instance),
-						resource.TestCheckResourceAttr(resName, "label", instanceName),
-						resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-						resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-64bit"),
-						resource.TestCheckResourceAttr(resName, "config.0.root_device", "/dev/sda"),
-						resource.TestCheckResourceAttr(resName, "config.0.helpers.0.network", "true"),
-						resource.TestCheckResourceAttr(resName, "alerts.0.cpu", "60"),
-					),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckInstanceExists(resName, &instance),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("root_device"), knownvalue.StringExact("/dev/sda")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("helpers").AtSliceIndex(0).AtMapKey("network"), knownvalue.StringExact("true")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("alerts").AtSliceIndex(0).AtMapKey("cpu"), knownvalue.StringExact("60")),
+					},
 				},
 				{
 					Config: tmpl.ConfigUpdates(t, instanceName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckInstanceExists(resName, &instance),
-						resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_r", instanceName)),
-						resource.TestCheckResourceAttr(resName, "group", "tf_test_r"),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckInstanceExists(resName, &instance),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_r", instanceName))),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test_r")),
 						// changed kernel, not label
-						resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-						resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-32bit"),
-						resource.TestCheckResourceAttr(resName, "config.0.root_device", "/dev/sda"),
-						resource.TestCheckResourceAttr(resName, "config.0.helpers.0.network", "false"),
-						resource.TestCheckResourceAttr(resName, "alerts.0.cpu", "80"),
-					),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-32bit")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("root_device"), knownvalue.StringExact("/dev/sda")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("helpers").AtSliceIndex(0).AtMapKey("network"), knownvalue.StringExact("false")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("alerts").AtSliceIndex(0).AtMapKey("cpu"), knownvalue.StringExact("80")),
+					},
 				},
 			},
 		})
@@ -1002,38 +989,33 @@ func TestAccResourceInstance_configPairUpdate(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithConfig(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "config.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-64bit"),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("config", testConfigExists(&config), testConfigKernel("linode/latest-64bit")),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigExists(&config), testConfigKernel("linode/latest-64bit")), ),
+				},
 			},
 			{
 				Config: tmpl.MultipleConfigs(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "config.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "configa"),
-					resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "config.1.label", "configb"),
-					resource.TestCheckResourceAttr(resName, "config.1.kernel", "linode/latest-32bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("configa", testConfigExists(&configA), testConfigKernel("linode/latest-64bit")),
-						testConfig("configb", testConfigExists(&configB), testConfigKernel("linode/latest-32bit")),
-					),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("configa")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact("configb")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(1).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-32bit")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("configa", testConfigExists(&configA), testConfigKernel("linode/latest-64bit")), testConfig("configb", testConfigExists(&configB), testConfigKernel("linode/latest-32bit")), ),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -1043,17 +1025,15 @@ func TestAccResourceInstance_configPairUpdate(t *testing.T) {
 			},
 			{
 				Config: tmpl.WithConfig(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "config.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-64bit"),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("config", testConfigExists(&config), testConfigKernel("linode/latest-64bit")),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigExists(&config), testConfigKernel("linode/latest-64bit")), ),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -1063,20 +1043,16 @@ func TestAccResourceInstance_configPairUpdate(t *testing.T) {
 			},
 			{
 				Config: tmpl.ConfigsAllUpdated(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 					// resource.TestCheckResourceAttr(resName, "kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkComputeInstanceConfigs(&instance,
-						testConfig("configb", testConfigKernel("linode/latest-64bit")),
-						testConfig("configa", testConfigKernel("linode/latest-32bit")),
-						testConfig("configc", testConfigKernel("linode/latest-64bit")),
-					),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("configb", testConfigKernel("linode/latest-64bit")), testConfig("configa", testConfigKernel("linode/latest-32bit")), testConfig("configc", testConfigKernel("linode/latest-64bit")), ),
+				},
 			},
 		},
 	})
@@ -1097,25 +1073,19 @@ func TestAccResourceInstance_upsizeWithoutDisk(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithType(t, instanceName, acceptance.PublicKeyMaterial, "g6-nanode-1", testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 			{
 				Config: tmpl.WithType(t, instanceName, acceptance.PublicKeyMaterial, "g6-standard-1", testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 		},
 	})
@@ -1136,32 +1106,32 @@ func TestAccResourceInstance_diskRawResize(t *testing.T) {
 			// Start off with a Linode 1024
 			{
 				Config: tmpl.RawDisk(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "config.#", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.#", "1"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					resource.TestCheckResourceAttr(resName, "disk.0.label", "disk"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("disk")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
+				},
 			},
 			// Bump it to a 2048, and expand the disk
 			{
 				Config: tmpl.RawDiskExpanded(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					resource.TestCheckResourceAttr(resName, "config.#", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.#", "1"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "6000"),
-					resource.TestCheckResourceAttr(resName, "disk.0.label", "disk"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("6000")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("disk")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
+				},
 			},
 		},
 	})
@@ -1182,21 +1152,21 @@ func TestAccResourceInstance_tag(t *testing.T) {
 			// Start off with a single tag
 			{
 				Config: tmpl.Tag(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+				},
 			},
 			// Apply updated tags
 			{
 				Config: tmpl.TagUpdate(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-					resource.TestCheckResourceAttr(resName, "tags.1", "tf_test_2"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(1), knownvalue.StringExact("tf_test_2")),
+				},
 			},
 			// Reapply with different case, expect no planned changes
 			{
@@ -1206,11 +1176,11 @@ func TestAccResourceInstance_tag(t *testing.T) {
 			// Update the tags again, expect changes
 			{
 				Config: tmpl.Tag(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resName, "tags.0", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+				},
 			},
 		},
 	})
@@ -1234,22 +1204,22 @@ func TestAccResourceInstance_tagWithVolume(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.TagVolume(t, label, "tf_test", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(instanceResName, &instance),
-					resource.TestCheckResourceAttr(instanceResName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(instanceResName, "tags.0", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(instanceResName, &instance),
+					statecheck.ExpectKnownValue(instanceResName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(instanceResName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test")),
+				},
 			},
 			{
 				Config: tmpl.TagVolume(t, label, "tf_test_updated", testRegion),
-				Check: resource.ComposeTestCheckFunc(
+				ConfigStateChecks: []statecheck.StateCheck{
 					// Ensure the volume is not detached
-					acceptance.CheckEventAbsent(volumeResName, "volume", linodego.ActionVolumeDetach),
+					acceptance.StateCheckEventAbsent(volumeResName, "volume", linodego.ActionVolumeDetach),
 
-					acceptance.CheckInstanceExists(instanceResName, &instance),
-					resource.TestCheckResourceAttr(instanceResName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(instanceResName, "tags.0", "tf_test_updated"),
-				),
+					acceptance.StateCheckInstanceExists(instanceResName, &instance),
+					statecheck.ExpectKnownValue(instanceResName, tfjsonpath.New("tags"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(instanceResName, tfjsonpath.New("tags").AtSliceIndex(0), knownvalue.StringExact("tf_test_updated")),
+				},
 			},
 		},
 	})
@@ -1271,28 +1241,28 @@ func TestAccResourceInstance_diskResize(t *testing.T) {
 			// Start off with a Linode 1024
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
+				},
 			},
 			// Increase disk size
 			{
 				Config: tmpl.DiskConfigResized(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "6000"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("6000")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
+				},
 			},
 		},
 	})
@@ -1314,28 +1284,28 @@ func TestAccResourceInstance_withDiskLinodeUpsize(t *testing.T) {
 			// Start with g6-nanode-1
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
+				},
 			},
 			// Upsize to g6-standard-1 with fully allocated disk
 			{
 				Config: tmpl.DiskConfigExpanded(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "51200"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(51200))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("51200")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(51200))),
+				},
 			},
 		},
 	})
@@ -1357,28 +1327,28 @@ func TestAccResourceInstance_withDiskLinodeDownsize(t *testing.T) {
 			// Start with g6-standard-1 with fully allocated disk
 			{
 				Config: tmpl.DiskConfigExpanded(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "51200"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(51200))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("51200")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(51200))),
+				},
 			},
 			// Downsize to g6-nanode-1
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
+				},
 			},
 		},
 	})
@@ -1400,13 +1370,10 @@ func TestAccResourceInstance_downsizeWithoutDisk(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithType(t, instanceName, acceptance.PublicKeyMaterial, "g6-standard-1", testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(50944)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(50944)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 			{
 				Config: tmpl.WithType(t, instanceName, acceptance.PublicKeyMaterial, "g6-nanode-1", testRegion, rootPass),
@@ -1434,13 +1401,10 @@ func TestAccResourceInstance_fullDiskSwapUpsize(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.FullDisk(t, instanceName, acceptance.PublicKeyMaterial, stackScriptName, testRegion, 256, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -1498,23 +1462,17 @@ func TestAccResourceInstance_swapUpsize(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithSwapSize(t, instanceName, acceptance.PublicKeyMaterial, testRegion, 256, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 			{
 				Config: tmpl.WithSwapSize(t, instanceName, acceptance.PublicKeyMaterial, testRegion, 512, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25088)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(512)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25088)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(512)), ),
+				},
 			},
 		},
 	})
@@ -1537,23 +1495,17 @@ func TestAccResourceInstance_swapDownsize(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithSwapSize(t, instanceName, acceptance.PublicKeyMaterial, testRegion, 512, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25088)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(512)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25088)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(512)), ),
+				},
 			},
 			{
 				Config: tmpl.WithSwapSize(t, instanceName, acceptance.PublicKeyMaterial, testRegion, 256, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstanceDisks(&instance,
-						testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)),
-						testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)),
-					),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstanceDisks(&instance, testDiskByFS(linodego.FilesystemExt4, testDiskSize(25344)), testDiskByFS(linodego.FilesystemSwap, testDiskSize(256)), ),
+				},
 			},
 		},
 	})
@@ -1575,31 +1527,31 @@ func TestAccResourceInstance_diskResizeAndExpanded(t *testing.T) {
 			// Start off with a Linode 1024
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(3000))),
+				},
 			},
 
 			// Bump to 2048 and expand disk
 			{
 				Config: tmpl.DiskConfigResizedExpanded(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
 
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "6000"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("6000")),
 
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
-				),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskSize(6000))),
+				},
 			},
 		},
 	})
@@ -1624,42 +1576,54 @@ func TestAccResourceInstance_diskSlotReorder(t *testing.T) {
 			// Start off with a Linode 1024
 			{
 				Config: tmpl.DiskConfig(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "25600"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					checkInstanceDisks(&instance, testDisk("disk", testDiskExists(&instanceDisk), testDiskSize(3000))),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk))),
-					resource.TestCheckResourceAttrSet(resName, "config.0.devices.0.sda.0.disk_id"),
-					resource.TestCheckResourceAttr(resName, "config.0.devices.0.sdb.#", "0"),
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					checkComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("25600")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					stateCheckInstanceDisks(&instance, testDisk("disk", testDiskExists(&instanceDisk), testDiskSize(3000))),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"), testConfigSDADisk(&instanceDisk))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sdb"), knownvalue.ListSizeExact(0)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					stateCheckComputeInstanceConfigs(&instance, testConfig("config", testConfigKernel("linode/latest-64bit"))),
+				},
 			},
 			// Add a disk, reorder the disks
 			{
 				Config: tmpl.DiskConfigReordered(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "specs.0.disk", "51200"),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-					resource.TestCheckResourceAttr(resName, "disk.0.size", "3000"),
-					resource.TestCheckResourceAttr(resName, "disk.0.label", "disk"),
-					resource.TestCheckResourceAttrSet(resName, "disk.0.id"),
-					resource.TestCheckResourceAttr(resName, "disk.1.size", "3000"),
-					resource.TestCheckResourceAttr(resName, "disk.1.label", "diskb"),
-					resource.TestCheckResourceAttrSet(resName, "disk.1.id"),
-					resource.TestCheckResourceAttr(resName, "config.0.label", "config"),
-					resource.TestCheckResourceAttr(resName, "config.0.kernel", "linode/latest-64bit"),
-					resource.TestCheckResourceAttrSet(resName, "config.0.devices.0.sda.0.disk_id"),
-					resource.TestCheckResourceAttrSet(resName, "config.0.devices.0.sdb.0.disk_id"),
-					resource.TestCheckResourceAttr(resName, "config.0.devices.0.sdc.#", "0"),
-					resource.TestCheckResourceAttrPair(resName, "config.0.devices.0.sda.0.disk_id", resName, "disk.1.id"),
-					resource.TestCheckResourceAttrPair(resName, "config.0.devices.0.sdb.0.disk_id", resName, "disk.0.id"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("specs").AtSliceIndex(0).AtMapKey("disk"), knownvalue.StringExact("51200")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("size"), knownvalue.StringExact("3000")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("disk")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(1).AtMapKey("size"), knownvalue.StringExact("3000")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(1).AtMapKey("label"), knownvalue.StringExact("diskb")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk").AtSliceIndex(1).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact("config")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("kernel"), knownvalue.StringExact("linode/latest-64bit")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sdb").AtSliceIndex(0).AtMapKey("disk_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sdc"), knownvalue.ListSizeExact(0)),
+					statecheck.CompareValuePairs(
+						resName,
+						tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sda").AtSliceIndex(0).AtMapKey("disk_id"),
+						resName,
+						tfjsonpath.New("disk").AtSliceIndex(1).AtMapKey("id"),
+						compare.ValuesSame(),
+					),
+					statecheck.CompareValuePairs(
+						resName,
+						tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("devices").AtSliceIndex(0).AtMapKey("sdb").AtSliceIndex(0).AtMapKey("disk_id"),
+						resName,
+						tfjsonpath.New("disk").AtSliceIndex(0).AtMapKey("id"),
+						compare.ValuesSame(),
+					),
 
-					resource.TestCheckResourceAttr(resName, "swap_size", "0"),
-					resource.TestCheckResourceAttr(resName, "status", "running"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("swap_size"), knownvalue.StringExact("0")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("running")),
+				},
 			},
 		},
 	})
@@ -1680,11 +1644,11 @@ func TestAccResourceInstance_privateNetworking(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.PrivateNetworking(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					checkInstancePrivateNetworkAttributes("linode_instance.foobar"),
-					resource.TestCheckResourceAttr(resName, "private_ip", "true"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					stateCheckInstancePrivateNetworkAttributes("linode_instance.foobar"),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("private_ip"), knownvalue.StringExact("true")),
+				},
 			},
 		},
 	})
@@ -1705,14 +1669,14 @@ func TestAccResourceInstance_stackScriptInstance(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.StackScript(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "group", "tf_test"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("group"), knownvalue.StringExact("tf_test")),
+				},
 			},
 
 			{
@@ -1740,19 +1704,19 @@ func TestAccResourceInstance_diskImageUpdate(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DiskBootImage(t, instanceName, acceptance.TestImagePrevious, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName)),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+				},
 			},
 			{
 				Config: tmpl.DiskBootImage(t, instanceName, acceptance.TestImageLatest, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
 					// resource was tainted for recreation due to change of disk.0.image, marked
 					// with ForceNew.
-					acceptance.CheckResourceAttrNotEqual(resName, "id", strconv.Itoa(instance.ID)),
-				),
+					acceptance.StateCheckResourceAttrNotEqual(resName, "id", strconv.Itoa(instance.ID)),
+				},
 			},
 
 			{
@@ -1781,10 +1745,10 @@ func TestAccResourceInstance_stackScriptDisk(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DiskStackScript(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+				},
 			},
 		},
 	})
@@ -1809,20 +1773,20 @@ func TestAccResourceInstance_typeChangeDiskImplicit(t *testing.T) {
 			// Create an initial instance
 			{
 				Config: tmpl.TypeChangeDisk(t, instanceName, "g6-nanode-1", testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+				},
 			},
 			// Upsize the instance and disk
 			{
 				Config: tmpl.TypeChangeDisk(t, instanceName, "g6-standard-1", testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+				},
 			},
 			// Attempt a downsize
 			{
@@ -1849,11 +1813,11 @@ func TestAccResourceInstance_typeChangeDiskExplicit(t *testing.T) {
 			// Create an instance with explicit disks
 			{
 				Config: tmpl.TypeChangeDiskExplicit(t, instanceName, "g6-nanode-1", testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+				},
 			},
 			// Attempt to resize the instance and disk and expect an error
 			{
@@ -1863,11 +1827,11 @@ func TestAccResourceInstance_typeChangeDiskExplicit(t *testing.T) {
 			// Resize only the instance
 			{
 				Config: tmpl.TypeChangeDiskExplicit(t, instanceName, "g6-standard-1", testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+				},
 			},
 		},
 	})
@@ -1889,29 +1853,29 @@ func TestAccResourceInstance_typeChangeNoDisks(t *testing.T) {
 			// Create an instance with explicit disks
 			{
 				Config: tmpl.TypeChangeDiskNone(t, instanceName, "g6-nanode-1", testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+				},
 			},
 			// Attempt to resize the instance
 			{
 				Config: tmpl.TypeChangeDiskNone(t, instanceName, "g6-standard-1", testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-standard-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-standard-1")),
+				},
 			},
 			// Attempt to downsize the instance
 			{
 				Config: tmpl.TypeChangeDiskNone(t, instanceName, "g6-nanode-1", testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+				},
 			},
 		},
 	})
@@ -1932,36 +1896,36 @@ func TestAccResourceInstance_powerStateUpdates(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.BootState(t, instanceName, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+				},
 			},
 			{
 				Config: tmpl.BootState(t, instanceName, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "running"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("running")),
+				},
 			},
 			{
 				Config: tmpl.BootState(t, instanceName, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+				},
 			},
 			// Ensure an implicit reboot isn't triggered when booted == false
 			{
 				Config: tmpl.BootStateInterface(t, instanceName, testRegion, false),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+				},
 			},
 			{
 				PreConfig: func() {
@@ -2007,27 +1971,27 @@ func TestAccResourceInstance_powerStateConfigUpdates(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.BootStateConfig(t, instanceName, testRegion, false, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+				},
 			},
 			{
 				Config: tmpl.BootStateConfig(t, instanceName, testRegion, true, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "running"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("running")),
+				},
 			},
 			{
 				Config: tmpl.BootStateConfig(t, instanceName, testRegion, false, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "offline"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("offline")),
+				},
 			},
 		},
 	})
@@ -2049,11 +2013,11 @@ func TestAccResourceInstance_powerStateConfigBooted(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.BootStateConfig(t, instanceName, testRegion, true, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "running"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("running")),
+				},
 			},
 		},
 	})
@@ -2074,11 +2038,11 @@ func TestAccResourceInstance_powerStateBooted(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.BootState(t, instanceName, testRegion, true),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "status", "running"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.StringExact("running")),
+				},
 			},
 		},
 	})
@@ -2127,26 +2091,26 @@ func TestAccResourceInstance_ipv4Sharing(t *testing.T) {
 			},
 			{
 				Config: tmpl.IPv4Sharing(t, instanceName, region),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(failoverResName, &instance),
-					resource.TestCheckResourceAttr(failoverResName, "shared_ipv4.#", "1"),
-					resource.TestCheckResourceAttrSet(failoverResName, "shared_ipv4.0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(failoverResName, &instance),
+					statecheck.ExpectKnownValue(failoverResName, tfjsonpath.New("shared_ipv4"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(failoverResName, tfjsonpath.New("shared_ipv4").AtSliceIndex(0), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.IPv4SharingAllocation(t, instanceName, region),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(failoverResName, &instance),
-					resource.TestCheckResourceAttr(failoverResName, "shared_ipv4.#", "1"),
-					resource.TestCheckResourceAttrSet(failoverResName, "shared_ipv4.0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(failoverResName, &instance),
+					statecheck.ExpectKnownValue(failoverResName, tfjsonpath.New("shared_ipv4"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(failoverResName, tfjsonpath.New("shared_ipv4").AtSliceIndex(0), knownvalue.NotNull()),
+				},
 			},
 			{
 				Config: tmpl.IPv4SharingEmpty(t, instanceName, region),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(failoverResName, &instance),
-					resource.TestCheckResourceAttr(failoverResName, "shared_ipv4.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(failoverResName, &instance),
+					statecheck.ExpectKnownValue(failoverResName, tfjsonpath.New("shared_ipv4"), knownvalue.ListSizeExact(0)),
+				},
 			},
 		},
 	})
@@ -2174,15 +2138,15 @@ func TestAccResourceInstance_userData(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.UserData(t, instanceName, region, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", region),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(region)),
 
-					resource.TestCheckResourceAttr(resName, "has_user_data", "true"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("has_user_data"), knownvalue.StringExact("true")),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -2275,20 +2239,21 @@ func TestAccResourceInstance_firewallOnCreation(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.FirewallOnCreation(t, instanceName, region, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(instanceResourceName, &instance),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(instanceResourceName, &instance),
+				},
 			},
 			{
 				RefreshState: true,
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrPair(
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.CompareValuePairs(
 						firewallResourceName,
-						"devices.0.label",
+						tfjsonpath.New("devices").AtSliceIndex(0).AtMapKey("label"),
 						instanceResourceName,
-						"label",
+						tfjsonpath.New("label"),
+						compare.ValuesSame(),
 					),
-				),
+				},
 			},
 			{
 				ResourceName:            instanceResourceName,
@@ -2316,18 +2281,18 @@ func TestAccResourceInstance_VPCInterface(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config: tmpl.VPCInterface(t, instanceName, testRegion),
-					Check: resource.ComposeTestCheckFunc(
-						acceptance.CheckInstanceExists(resName, &instance),
-						resource.TestCheckResourceAttr(resName, "label", instanceName),
-						resource.TestCheckResourceAttr(resName, "region", testRegion),
-						resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-						resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-						resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vpc"),
+					ConfigStateChecks: []statecheck.StateCheck{
+						acceptance.StateCheckInstanceExists(resName, &instance),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
 
-						resource.TestCheckResourceAttr(resName, "config.0.interface.0.ipv4.0.vpc", "10.0.4.150"),
-						resource.TestCheckResourceAttr(resName, "config.0.interface.0.ip_ranges.0", "10.0.4.100/32"),
-						resource.TestCheckResourceAttrSet(resName, "config.0.interface.0.ipv4.0.nat_1_1"),
-					),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("vpc"), knownvalue.StringExact("10.0.4.150")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("ip_ranges").AtSliceIndex(0), knownvalue.StringExact("10.0.4.100/32")),
+						statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("ipv4").AtSliceIndex(0).AtMapKey("nat_1_1"), knownvalue.NotNull()),
+					},
 				},
 				{
 					ResourceName:      resName,
@@ -2364,26 +2329,26 @@ func TestAccResourceInstance_VPCPublicInterfacesAddRemoveSwap(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.PublicInterface(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "public"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+				},
 			},
 			{
 				Config: tmpl.PublicAndVPCInterfaces(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "public"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.1.purpose", "vpc"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -2393,26 +2358,26 @@ func TestAccResourceInstance_VPCPublicInterfacesAddRemoveSwap(t *testing.T) {
 			},
 			{
 				Config: tmpl.VPCAndPublicInterfaces(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "2"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "vpc"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.1.purpose", "public"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("vpc")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(1).AtMapKey("purpose"), knownvalue.StringExact("public")),
+				},
 			},
 			{
 				Config: tmpl.PublicInterface(t, instanceName, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.#", "1"),
-					resource.TestCheckResourceAttr(resName, "config.0.interface.0.purpose", "public"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("config").AtSliceIndex(0).AtMapKey("interface").AtSliceIndex(0).AtMapKey("purpose"), knownvalue.StringExact("public")),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -2454,23 +2419,23 @@ func TestAccResourceInstance_migration(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
+				},
 			},
 			{
 				Config: tmpl.Basic(t, instanceName, acceptance.PublicKeyMaterial, targetRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", targetRegion),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(targetRegion)),
+				},
 			},
 			// TODO: Add logic for testing warm migrations once possible
 			{
@@ -2507,18 +2472,18 @@ func TestAccResourceInstance_withPG(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithPG(t, testLabel, targetRegion, "g1", pgIDs),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", testLabel),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", targetRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(testLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(targetRegion)),
 
-					resource.TestCheckResourceAttr(resName, "placement_group.#", "1"),
-					resource.TestCheckResourceAttrSet(resName, "placement_group.0.id"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.label", testLabel+"-g1"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_type", "anti_affinity:local"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_policy", "flexible"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(testLabel+"-g1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.StringExact("anti_affinity:local")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.StringExact("flexible")),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -2555,61 +2520,61 @@ func TestAccResourceInstance_pgAssignment(t *testing.T) {
 			// Create the instance with a PG
 			{
 				Config: tmpl.WithPG(t, testLabel, testRegion, "", pgIDs),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", testLabel),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(testLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 
-					resource.TestCheckResourceAttr(resName, "placement_group.#", "0"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group"), knownvalue.ListSizeExact(0)),
+				},
 			},
 
 			// Assign the instance to a PG
 			{
 				Config: tmpl.WithPG(t, testLabel, testRegion, "g1", pgIDs),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", testLabel),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(testLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 
-					resource.TestCheckResourceAttr(resName, "placement_group.#", "1"),
-					resource.TestCheckResourceAttrSet(resName, "placement_group.0.id"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.label", testLabel+"-g1"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_type", "anti_affinity:local"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_policy", "flexible"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(testLabel+"-g1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.StringExact("anti_affinity:local")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.StringExact("flexible")),
+				},
 			},
 
 			// Reassign the instance to another PG
 			{
 				Config: tmpl.WithPG(t, testLabel, testRegion, "g2", pgIDs),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", testLabel),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(testLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 
-					resource.TestCheckResourceAttr(resName, "placement_group.#", "1"),
-					resource.TestCheckResourceAttrSet(resName, "placement_group.0.id"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.label", testLabel+"-g2"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_type", "anti_affinity:local"),
-					resource.TestCheckResourceAttr(resName, "placement_group.0.placement_group_policy", "flexible"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(testLabel+"-g2")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.StringExact("anti_affinity:local")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.StringExact("flexible")),
+				},
 			},
 
 			// Unassign the instance from the PG
 			{
 				Config: tmpl.WithPG(t, testLabel, testRegion, "", pgIDs),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", testLabel),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "region", testRegion),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(testLabel)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(testRegion)),
 
-					resource.TestCheckResourceAttr(resName, "placement_group.#", "0"),
-				),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("placement_group"), knownvalue.ListSizeExact(0)),
+				},
 			},
 			{
 				ResourceName:            resName,
@@ -2653,14 +2618,14 @@ func TestAccResourceInstance_diskEncryption(t *testing.T) {
 					rootPass,
 					&encryptionEnabled,
 				),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", targetRegion),
-					resource.TestCheckResourceAttr(resName, "disk_encryption", "enabled"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(targetRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk_encryption"), knownvalue.StringExact("enabled")),
+				},
 			},
 			{
 				Config: tmpl.DiskEncryption(
@@ -2670,14 +2635,14 @@ func TestAccResourceInstance_diskEncryption(t *testing.T) {
 					rootPass,
 					&encryptionDisabled,
 				),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", targetRegion),
-					resource.TestCheckResourceAttr(resName, "disk_encryption", "disabled"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(targetRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk_encryption"), knownvalue.StringExact("disabled")),
+				},
 			},
 
 			// Make sure the instance is not recreated when disk_encryption is not explicitly set.
@@ -2690,14 +2655,14 @@ func TestAccResourceInstance_diskEncryption(t *testing.T) {
 					rootPass,
 					nil,
 				),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", instanceName),
-					resource.TestCheckResourceAttr(resName, "type", "g6-nanode-1"),
-					resource.TestCheckResourceAttr(resName, "image", acceptance.TestImageLatest),
-					resource.TestCheckResourceAttr(resName, "region", targetRegion),
-					resource.TestCheckResourceAttr(resName, "disk_encryption", "disabled"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("type"), knownvalue.StringExact("g6-nanode-1")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("image"), knownvalue.StringExact(acceptance.TestImageLatest)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("region"), knownvalue.StringExact(targetRegion)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("disk_encryption"), knownvalue.StringExact("disabled")),
+				},
 			},
 
 			{
@@ -2868,8 +2833,8 @@ func TestAccResourceInstance_interfaceVPCIPv6(t *testing.T) {
 					targetRegion,
 					rootPass,
 				),
-				Check: acceptance.CheckInstanceExists(resName, &instance),
 				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
 					statecheck.ExpectKnownValue(
 						resName,
 						ipv6Path.AtMapKey("is_public"),
@@ -2937,8 +2902,8 @@ func TestAccResourceInstance_interfaceVPCIPv6(t *testing.T) {
 					targetRegion,
 					rootPass,
 				),
-				Check: acceptance.CheckInstanceExists(resName, &instance),
 				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
 					// interface[0].ipv6[0] public flag
 					statecheck.ExpectKnownValue(
 						resName,
@@ -3059,8 +3024,8 @@ func TestAccResourceInstance_configInterfaceVPCIPv6(t *testing.T) {
 					targetRegion,
 					rootPass,
 				),
-				Check: acceptance.CheckInstanceExists(resName, &instance),
 				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
 					statecheck.ExpectKnownValue(
 						resName,
 						ipv6Path.AtMapKey("slaac"),
@@ -3410,6 +3375,170 @@ func checkComputeInstanceDisk(instance *linodego.Instance, label string, size in
 	}
 }
 
+// stateCheckComputeInstanceConfigs is the StateCheck equivalent of checkComputeInstanceConfigs.
+// IMPORTANT: This relies on the instance pointer being populated by StateCheckInstanceExists
+// which must appear EARLIER in the ConfigStateChecks slice.
+func stateCheckComputeInstanceConfigs(instance *linodego.Instance, configsTests ...testConfigsFunc) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		if instance == nil || instance.ID == 0 {
+			resp.Error = fmt.Errorf("Error fetching configs: invalid Instance argument")
+			return
+		}
+
+		instanceConfigs, err := client.ListInstanceConfigs(context.Background(), instance.ID, nil)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error fetching configs: %s", err)
+			return
+		}
+
+		if len(instanceConfigs) == 0 {
+			resp.Error = fmt.Errorf("No configs")
+			return
+		}
+
+		for _, tests := range configsTests {
+			if err := tests(instanceConfigs); err != nil {
+				resp.Error = err
+				return
+			}
+		}
+	})
+}
+
+// stateCheckComputeInstanceDisk is the StateCheck equivalent of checkComputeInstanceDisk.
+func stateCheckComputeInstanceDisk(instance *linodego.Instance, label string, size int) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		if instance == nil || instance.ID == 0 {
+			resp.Error = fmt.Errorf("Error fetching disks: invalid Instance argument")
+			return
+		}
+
+		instanceDisks, err := client.ListInstanceDisks(context.Background(), instance.ID, nil)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error fetching disks: %s", err)
+			return
+		}
+
+		if len(instanceDisks) == 0 {
+			resp.Error = fmt.Errorf("No disks")
+			return
+		}
+
+		for _, disk := range instanceDisks {
+			if disk.Label == label && disk.Size == size {
+				return
+			}
+		}
+
+		resp.Error = fmt.Errorf("Disk not found: %s", label)
+	})
+}
+
+// stateCheckInstanceDisks is the StateCheck equivalent of checkInstanceDisks.
+func stateCheckInstanceDisks(instance *linodego.Instance, disksTests ...testDisksFunc) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		if instance == nil || instance.ID == 0 {
+			resp.Error = fmt.Errorf("Error fetching disks: invalid Instance argument")
+			return
+		}
+
+		instanceDisks, err := client.ListInstanceDisks(context.Background(), instance.ID, nil)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error fetching disks: %s", err)
+			return
+		}
+
+		if len(instanceDisks) == 0 {
+			resp.Error = fmt.Errorf("No disks")
+			return
+		}
+
+		for _, tests := range disksTests {
+			if err := tests(instanceDisks); err != nil {
+				resp.Error = err
+				return
+			}
+		}
+	})
+}
+
+// stateCheckInstanceDiskExists is the StateCheck equivalent of checkInstanceDiskExists.
+func stateCheckInstanceDiskExists(instance *linodego.Instance, label string, instanceDisk *linodego.InstanceDisk) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		if instance == nil || instance.ID == 0 {
+			resp.Error = fmt.Errorf("Error fetching disks: invalid Instance argument")
+			return
+		}
+
+		instanceDisks, err := client.ListInstanceDisks(context.Background(), instance.ID, nil)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error fetching disks: %s", err)
+			return
+		}
+
+		if len(instanceDisks) == 0 {
+			resp.Error = fmt.Errorf("No disks")
+			return
+		}
+
+		for _, disk := range instanceDisks {
+			if disk.Label == label {
+				*instanceDisk = disk
+				return
+			}
+		}
+
+		resp.Error = fmt.Errorf("Disk not found: %s", label)
+	})
+}
+
+// stateCheckInstancePrivateNetworkAttributes is the StateCheck equivalent of checkInstancePrivateNetworkAttributes.
+func stateCheckInstancePrivateNetworkAttributes(n string) statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == n {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("should have a Linode ID")
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("should have found linode_instance resource %s", n)
+			return
+		}
+
+		id, err := strconv.Atoi(resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("should have an integer Linode ID: %s", err)
+			return
+		}
+
+		client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+		instanceIPs, err := client.GetInstanceIPAddresses(context.Background(), id)
+		if err != nil {
+			resp.Error = err
+			return
+		}
+		if len(instanceIPs.IPv4.Private) == 0 {
+			resp.Error = fmt.Errorf("should have a private ip on Linode ID %d", id)
+		}
+	})
+}
+
 func TestAccResourceInstance_withReservedIP(t *testing.T) {
 	t.Parallel()
 
@@ -3425,11 +3554,11 @@ func TestAccResourceInstance_withReservedIP(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithReservedIP(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resourceName, &instance),
-					resource.TestCheckResourceAttr(resourceName, "label", instanceName),
-					resource.TestCheckResourceAttr(resourceName, "ipv4.#", "1"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resourceName, &instance),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("ipv4"), knownvalue.ListSizeExact(1)),
+				},
 			},
 			{
 				ResourceName:            resourceName,
@@ -3457,47 +3586,54 @@ func TestAccResourceInstance_deleteWithReservedIP(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithReservedIP(t, instanceName, acceptance.PublicKeyMaterial, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resourceName, &instance),
-					resource.TestCheckResourceAttr(resourceName, "label", instanceName),
-					resource.TestCheckResourceAttr(resourceName, "ipv4.#", "1"),
-					func(s *terraform.State) error {
-						rs, ok := s.RootModule().Resources[ipResourceName]
-						if !ok {
-							return fmt.Errorf("Not found: %s", ipResourceName)
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resourceName, &instance),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(instanceName)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("ipv4"), knownvalue.ListSizeExact(1)),
+					acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+						for _, rc := range req.State.Values.RootModule.Resources {
+							if rc.Address == ipResourceName {
+								addrVal, ok := rc.AttributeValues["address"]
+								if !ok {
+									resp.Error = fmt.Errorf("address attribute not found on %s", ipResourceName)
+									return
+								}
+								reservedIP = addrVal.(string)
+								return
+							}
 						}
-						reservedIP = rs.Primary.Attributes["address"]
-						return nil
-					},
-				),
+						resp.Error = fmt.Errorf("Not found: %s", ipResourceName)
+					}),
+				},
 			},
 			{
 				Config: tmpl.OnlyReservedIP(t, testRegion), // This config only includes the reserved IP resource
-				Check: resource.ComposeTestCheckFunc(
-					func(s *terraform.State) error {
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
 						client := acceptance.TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
 
 						// Check if the instance is deleted
 						_, err := client.GetInstance(context.Background(), instance.ID)
 						if err == nil {
-							return fmt.Errorf("Linode instance %d still exists", instance.ID)
+							resp.Error = fmt.Errorf("Linode instance %d still exists", instance.ID)
+							return
 						}
 						if apiErr, ok := err.(*linodego.Error); ok && apiErr.Code != 404 {
-							return fmt.Errorf("Error requesting Linode instance %d: %s", instance.ID, err)
+							resp.Error = fmt.Errorf("Error requesting Linode instance %d: %s", instance.ID, err)
+							return
 						}
 
 						// Check if the Reserved IP still exists and is reserved
 						ip, err := client.GetIPAddress(context.Background(), reservedIP)
 						if err != nil {
-							return fmt.Errorf("Error checking if Reserved IP exists: %s", err)
+							resp.Error = fmt.Errorf("Error checking if Reserved IP exists: %s", err)
+							return
 						}
 						if !ip.Reserved {
-							return fmt.Errorf("Reserved IP %s is no longer reserved after instance deletion", reservedIP)
+							resp.Error = fmt.Errorf("Reserved IP %s is no longer reserved after instance deletion", reservedIP)
 						}
-
-						return nil
-					},
-				),
+					}),
+				},
 			},
 		},
 	})
@@ -3519,12 +3655,31 @@ func TestAccResourceInstance_withLock(t *testing.T) {
 			},
 			{
 				RefreshState: true,
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckInstanceExists(resName, &instance),
-					resource.TestCheckResourceAttr(resName, "label", label),
-					resource.TestCheckResourceAttr(resName, "locks.#", "1"),
-					resource.TestCheckTypeSetElemAttr(resName, "locks.*", lockType),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(resName, &instance),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(label)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("locks"), knownvalue.ListSizeExact(1)),
+					acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+						for _, rc := range req.State.Values.RootModule.Resources {
+							if rc.Address != resName {
+								continue
+							}
+							locks, ok := rc.AttributeValues["locks"].([]interface{})
+							if !ok {
+								resp.Error = fmt.Errorf("locks attribute not found or not a list")
+								return
+							}
+							for _, lock := range locks {
+								if lock.(string) == lockType {
+									return
+								}
+							}
+							resp.Error = fmt.Errorf("%s not found in locks", lockType)
+							return
+						}
+						resp.Error = fmt.Errorf("resource %s not found", resName)
+					}),
+				},
 			},
 		},
 	})
