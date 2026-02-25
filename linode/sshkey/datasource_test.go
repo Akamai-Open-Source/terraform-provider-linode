@@ -30,10 +30,10 @@ func TestAccDataSourceSSHKey_basic(t *testing.T) {
 			},
 			// {
 			// 	Config: resourceConfigBasic(label, acceptance.PublicKeyMaterial) + testDataSourceLinodeSSHKey(label, acceptance.PublicKeyMaterial),
-			// 	Check: resource.ComposeTestCheckFunc(
-			// 		resource.TestCheckResourceAttr(resourceName, "ssh_key", acceptance.PublicKeyMaterial),
-			// 		resource.TestCheckResourceAttr(resourceName, "label", label),
-			// 	),
+			// 	ConfigStateChecks: []statecheck.StateCheck{
+			// 		statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("ssh_key"), knownvalue.StringExact(acceptance.PublicKeyMaterial)),
+			// 		statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(label)),
+			// 	},
 			// },
 			{
 				Config:      tmpl.DataBasic(t, label),
