@@ -8,6 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/placementgroups/tmpl"
 )
@@ -32,34 +35,37 @@ func TestAccDataSourcePlacementGroups_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, baseLabel, testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					acceptance.CheckResourceAttrGreaterThan(dsAllName, "placement_groups.#", 2),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.id"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.label"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.placement_group_type"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.region"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.is_compliant"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.placement_group_policy"),
-					resource.TestCheckResourceAttrSet(dsAllName, "placement_groups.0.members.#"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					// dsAllName ("data.linode_placement_groups.all") checks
+					acceptance.StateCheckResourceAttrGreaterThan(dsAllName, "placement_groups.#", 2),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("region"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("is_compliant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsAllName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("members"), knownvalue.NotNull()),
 
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.#", "1"),
-					resource.TestCheckResourceAttrSet(dsByLabelName, "placement_groups.0.id"),
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.0.label", baseLabel+"-1"),
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.0.placement_group_type", "anti_affinity:local"),
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.0.region", testRegion),
-					resource.TestCheckResourceAttrSet(dsByLabelName, "placement_groups.0.is_compliant"),
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.0.placement_group_policy", "strict"),
-					resource.TestCheckResourceAttr(dsByLabelName, "placement_groups.0.members.#", "0"),
+					// dsByLabelName ("data.linode_placement_groups.by-label") checks
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(baseLabel+"-1")),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.StringExact("anti_affinity:local")),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("region"), knownvalue.StringExact(testRegion)),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("is_compliant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.StringExact("strict")),
+					statecheck.ExpectKnownValue(dsByLabelName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("members"), knownvalue.ListSizeExact(0)),
 
-					acceptance.CheckResourceAttrGreaterThan(dsByATName, "placement_groups.#", 2),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.id"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.label"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.placement_group_type"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.region"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.is_compliant"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.placement_group_policy"),
-					resource.TestCheckResourceAttrSet(dsByATName, "placement_groups.0.members.#"),
-				),
+					// dsByATName ("data.linode_placement_groups.by-placement-group-type") checks
+					acceptance.StateCheckResourceAttrGreaterThan(dsByATName, "placement_groups.#", 2),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_type"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("region"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("is_compliant"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("placement_group_policy"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByATName, tfjsonpath.New("placement_groups").AtSliceIndex(0).AtMapKey("members"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
