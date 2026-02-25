@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -39,6 +40,48 @@ func CheckInstanceExists(name string, instance *linodego.Instance) resource.Test
 
 		return nil
 	}
+}
+
+// StateCheckInstanceExists is the ConfigStateChecks-compatible equivalent of CheckInstanceExists.
+// It verifies that a Linode instance resource exists in the Terraform state and populates
+// the provided instance pointer with the API response for downstream assertions.
+func StateCheckInstanceExists(name string, instance *linodego.Instance) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client := TestAccSDKv2Provider.Meta().(*helper.ProviderMeta).Client
+
+		// Find the resource in tfjson state
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("No ID is set for %s", name)
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("Not found: %s", name)
+			return
+		}
+
+		id, err := strconv.Atoi(resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error parsing %v to int", resourceID)
+			return
+		}
+
+		found, err := client.GetInstance(context.Background(), id)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error retrieving state of Instance: %s", err)
+			return
+		}
+
+		*instance = *found
+	})
 }
 
 func CheckInstanceDestroy(s *terraform.State) error {
