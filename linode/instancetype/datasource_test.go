@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/instancetype/tmpl"
@@ -43,79 +46,80 @@ func TestAccDataSourceLinodeInstanceType_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, targetType.ID),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "id", targetType.ID),
-					resource.TestCheckResourceAttr(resourceName, "label", targetType.Label),
-					resource.TestCheckResourceAttr(
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.StringExact(targetType.ID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.StringExact(targetType.Label)),
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"disk",
-						strconv.FormatInt(int64(targetType.Disk), 10),
+						tfjsonpath.New("disk"),
+						knownvalue.StringExact(strconv.FormatInt(int64(targetType.Disk), 10)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"class",
-						string(targetType.Class),
+						tfjsonpath.New("class"),
+						knownvalue.StringExact(string(targetType.Class)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"memory",
-						strconv.FormatInt(int64(targetType.Memory), 10),
+						tfjsonpath.New("memory"),
+						knownvalue.StringExact(strconv.FormatInt(int64(targetType.Memory), 10)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"vcpus",
-						strconv.FormatInt(int64(targetType.VCPUs), 10),
+						tfjsonpath.New("vcpus"),
+						knownvalue.StringExact(strconv.FormatInt(int64(targetType.VCPUs), 10)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"accelerated_devices",
-						strconv.FormatInt(int64(targetType.AcceleratedDevices), 10),
+						tfjsonpath.New("accelerated_devices"),
+						knownvalue.StringExact(strconv.FormatInt(int64(targetType.AcceleratedDevices), 10)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"network_out",
-						strconv.FormatInt(int64(targetType.NetworkOut), 10),
+						tfjsonpath.New("network_out"),
+						knownvalue.StringExact(strconv.FormatInt(int64(targetType.NetworkOut), 10)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"price.0.hourly",
-						strconv.FormatFloat(float64(targetType.Price.Hourly), 'f', -1, 64)),
-					resource.TestCheckResourceAttr(
-						resourceName,
-						"price.0.monthly",
-						strconv.FormatFloat(float64(targetType.Price.Monthly), 'f', -1, 64),
+						tfjsonpath.New("price").AtSliceIndex(0).AtMapKey("hourly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Price.Hourly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"addons.0.backups.0.price.0.hourly",
-						strconv.FormatFloat(float64(targetType.Addons.Backups.Price.Hourly), 'f', -1, 64),
+						tfjsonpath.New("price").AtSliceIndex(0).AtMapKey("monthly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Price.Monthly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"addons.0.backups.0.price.0.monthly",
-						strconv.FormatFloat(float64(targetType.Addons.Backups.Price.Monthly), 'f', -1, 64),
+						tfjsonpath.New("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("hourly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Addons.Backups.Price.Hourly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"region_prices.0.monthly",
-						strconv.FormatFloat(float64(targetType.RegionPrices[0].Monthly), 'f', -1, 64),
+						tfjsonpath.New("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("price").AtSliceIndex(0).AtMapKey("monthly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Addons.Backups.Price.Monthly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"region_prices.0.hourly",
-						strconv.FormatFloat(float64(targetType.RegionPrices[0].Hourly), 'f', -1, 64),
+						tfjsonpath.New("region_prices").AtSliceIndex(0).AtMapKey("monthly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.RegionPrices[0].Monthly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"addons.0.backups.0.region_prices.0.monthly",
-						strconv.FormatFloat(float64(targetType.Addons.Backups.RegionPrices[0].Monthly), 'f', -1, 64),
+						tfjsonpath.New("region_prices").AtSliceIndex(0).AtMapKey("hourly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.RegionPrices[0].Hourly), 'f', -1, 64)),
 					),
-					resource.TestCheckResourceAttr(
+					statecheck.ExpectKnownValue(
 						resourceName,
-						"addons.0.backups.0.region_prices.0.hourly",
-						strconv.FormatFloat(float64(targetType.Addons.Backups.RegionPrices[0].Hourly), 'f', -1, 64),
+						tfjsonpath.New("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("region_prices").AtSliceIndex(0).AtMapKey("monthly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Addons.Backups.RegionPrices[0].Monthly), 'f', -1, 64)),
 					),
-				),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("addons").AtSliceIndex(0).AtMapKey("backups").AtSliceIndex(0).AtMapKey("region_prices").AtSliceIndex(0).AtMapKey("hourly"),
+						knownvalue.StringExact(strconv.FormatFloat(float64(targetType.Addons.Backups.RegionPrices[0].Hourly), 'f', -1, 64)),
+					),
+				},
 			},
 		},
 	})
