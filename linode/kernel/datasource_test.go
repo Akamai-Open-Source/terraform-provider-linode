@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/kernel/tmpl"
 )
@@ -22,18 +25,18 @@ func TestAccDataSourceKernel_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, kernelID),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "id", kernelID),
-					resource.TestCheckResourceAttrSet(resourceName, "label"),
-					resource.TestCheckResourceAttrSet(resourceName, "architecture"),
-					resource.TestCheckResourceAttrSet(resourceName, "deprecated"),
-					resource.TestCheckResourceAttrSet(resourceName, "kvm"),
-					resource.TestCheckResourceAttrSet(resourceName, "label"),
-					resource.TestCheckResourceAttrSet(resourceName, "pvops"),
-					resource.TestCheckResourceAttrSet(resourceName, "version"),
-					resource.TestCheckResourceAttrSet(resourceName, "xen"),
-					resource.TestCheckResourceAttrSet(resourceName, "built"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("id"), knownvalue.StringExact(kernelID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("architecture"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("deprecated"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("kvm"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("pvops"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("version"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("xen"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("built"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
