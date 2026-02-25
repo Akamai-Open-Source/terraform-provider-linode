@@ -48,13 +48,13 @@ func TestAccResourceNodeBalancerNode_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: config,
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerNodeExists,
-					resource.TestCheckResourceAttr(resName, "label", nodeName),
-					resource.TestCheckResourceAttrSet(resName, "status"),
-					resource.TestCheckResourceAttr(resName, "mode", "accept"),
-					resource.TestCheckResourceAttr(resName, "weight", "50"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerNodeExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodeName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("mode"), knownvalue.StringExact("accept")),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("weight"), knownvalue.Int64Exact(50)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -81,19 +81,19 @@ func TestAccResourceNodeBalancerNode_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, nodeName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerNodeExists,
-					resource.TestCheckResourceAttr(resName, "label", nodeName),
-					resource.TestCheckResourceAttr(resName, "weight", "50"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerNodeExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(nodeName)),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("weight"), knownvalue.Int64Exact(50)),
+				},
 			},
 			{
 				Config: tmpl.Updates(t, nodeName, testRegion, rootPass),
-				Check: resource.ComposeTestCheckFunc(
-					checkNodeBalancerNodeExists,
-					resource.TestCheckResourceAttr(resName, "label", fmt.Sprintf("%s_r", nodeName)),
-					resource.TestCheckResourceAttr(resName, "weight", "200"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					stateCheckNodeBalancerNodeExists(),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("label"), knownvalue.StringExact(fmt.Sprintf("%s_r", nodeName))),
+					statecheck.ExpectKnownValue(resName, tfjsonpath.New("weight"), knownvalue.Int64Exact(200)),
+				},
 			},
 			{
 				ResourceName:      resName,
@@ -169,6 +169,115 @@ func TestAccResourceNodeBalancerNode_vpc(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"status"},
 			},
 		},
+	})
+}
+
+func stateCheckNodeBalancerNodeExists() statecheck.StateCheck {
+	return acceptance.CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client, err := acceptance.GetTestClient()
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to get client: %s", err)
+			return
+		}
+
+		var linodeID, nodebalancerID, nodeID, configID int
+		var expectedNodePort string
+
+		// find Linode instance ID
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_instance" {
+				continue
+			}
+
+			idStr, ok := rc.AttributeValues["id"].(string)
+			if !ok {
+				resp.Error = fmt.Errorf("Error getting instance ID")
+				return
+			}
+			linodeID, err = strconv.Atoi(idStr)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idStr)
+				return
+			}
+		}
+
+		// find NodeBalancer Node ID
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Type != "linode_nodebalancer_node" {
+				continue
+			}
+
+			idStr, ok := rc.AttributeValues["id"].(string)
+			if !ok {
+				resp.Error = fmt.Errorf("Error getting node ID")
+				return
+			}
+			nodeID, err = strconv.Atoi(idStr)
+			if err != nil {
+				resp.Error = fmt.Errorf("Error parsing %v to int", idStr)
+				return
+			}
+
+			// nodebalancer_id is Int64 in schema, comes as float64 in tfjson state
+			nbIDVal, ok := rc.AttributeValues["nodebalancer_id"]
+			if !ok {
+				resp.Error = fmt.Errorf("nodebalancer_id not found")
+				return
+			}
+			nbIDFloat, ok := nbIDVal.(float64)
+			if !ok {
+				resp.Error = fmt.Errorf("Error parsing nodebalancer_id to float64")
+				return
+			}
+			nodebalancerID = int(nbIDFloat)
+
+			// config_id is Int64 in schema, comes as float64 in tfjson state
+			configIDVal, ok := rc.AttributeValues["config_id"]
+			if !ok {
+				resp.Error = fmt.Errorf("config_id not found")
+				return
+			}
+			configIDFloat, ok := configIDVal.(float64)
+			if !ok {
+				resp.Error = fmt.Errorf("Error parsing config_id to float64")
+				return
+			}
+			configID = int(configIDFloat)
+
+			// address is a string attribute
+			address, ok := rc.AttributeValues["address"].(string)
+			if !ok {
+				resp.Error = fmt.Errorf("Error getting address")
+				return
+			}
+			expectedNodePort = strings.Split(address, ":")[1]
+		}
+
+		instanceNetwork, err := client.GetInstanceIPAddresses(context.Background(), linodeID)
+		if err != nil {
+			resp.Error = fmt.Errorf("failed to get IPs for instance %d: %s", linodeID, err)
+			return
+		}
+
+		node, err := client.GetNodeBalancerNode(context.Background(), nodebalancerID, configID, nodeID)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error retrieving state of NodeBalancer Node %d: %s", nodeID, err)
+			return
+		}
+
+		privateIP := instanceNetwork.IPv4.Private[0].Address
+
+		nodeAddrComps := strings.Split(node.Address, ":")
+		nodeHost, nodePort := nodeAddrComps[0], nodeAddrComps[1]
+
+		if nodeHost != privateIP {
+			resp.Error = fmt.Errorf("expected node to have host '%s'; got '%s'", privateIP, node.Address)
+			return
+		}
+
+		if nodePort != expectedNodePort {
+			resp.Error = fmt.Errorf("expected node to have port '%s'; got '%s'", expectedNodePort, nodePort)
+		}
 	})
 }
 
