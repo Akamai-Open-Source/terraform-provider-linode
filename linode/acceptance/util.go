@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -18,12 +19,14 @@ import (
 	"text/template"
 	"time"
 
+	tfjson "github.com/hashicorp/terraform-json"
 	fwDiag "github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode"
@@ -46,6 +49,11 @@ type (
 	AttrValidateFunc     func(val string) error
 	ListAttrValidateFunc func(resourceName, path string, state *terraform.State) error
 	RegionFilterFunc     func(v linodego.Region) bool
+
+	// StateListAttrValidateFunc is the StateCheck equivalent of ListAttrValidateFunc.
+	// It accepts a resource name, path, and the list of tfjson.StateResource entries
+	// from the root module for validation against the tfjson state format.
+	StateListAttrValidateFunc func(resourceName, path string, resources []*tfjson.StateResource) error
 )
 
 var (
@@ -243,6 +251,36 @@ func CheckResourceAttrContains(resName string, path, desiredValue string) resour
 	}
 }
 
+// StateCheckResourceAttrContains is the StateCheck equivalent of CheckResourceAttrContains.
+// It checks that a resource attribute contains the specified substring.
+func StateCheckResourceAttrContains(resName string, path, desiredValue string) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			value, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			strValue, ok := value.(string)
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s is not a string", path)
+				return
+			}
+
+			if !strings.Contains(strValue, desiredValue) {
+				resp.Error = fmt.Errorf("value '%s' was not found in '%s'", desiredValue, strValue)
+			}
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
+}
+
 func ValidateResourceAttr(resName, path string, comparisonFunc AttrValidateFunc) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resName]
@@ -279,6 +317,55 @@ func CheckResourceAttrGreaterThan(resName, path string, target int) resource.Tes
 	})
 }
 
+// StateCheckResourceAttrGreaterThan is the StateCheck equivalent of CheckResourceAttrGreaterThan.
+// It validates that a resource attribute's integer value is strictly greater than the target.
+// Handles string, float64, and json.Number representations from the tfjson state.
+func StateCheckResourceAttrGreaterThan(resName, path string, target int) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			value, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			// tfjson state may represent numbers as json.Number or float64
+			var valInt int
+			switch v := value.(type) {
+			case string:
+				var err error
+				valInt, err = strconv.Atoi(v)
+				if err != nil {
+					resp.Error = fmt.Errorf("error parsing %v to int: %s", v, err)
+					return
+				}
+			case float64:
+				valInt = int(v)
+			case json.Number:
+				i, err := v.Int64()
+				if err != nil {
+					resp.Error = fmt.Errorf("error parsing %v to int: %s", v, err)
+					return
+				}
+				valInt = int(i)
+			default:
+				resp.Error = fmt.Errorf("attribute %s has unexpected type %T", path, value)
+				return
+			}
+
+			if valInt <= target {
+				resp.Error = fmt.Errorf("%d <= %d", valInt, target)
+			}
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
+}
+
 func CheckResourceAttrNotEqual(resName string, path, notValue string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resName]
@@ -294,6 +381,31 @@ func CheckResourceAttrNotEqual(resName string, path, notValue string) resource.T
 
 		return nil
 	}
+}
+
+// StateCheckResourceAttrNotEqual is the StateCheck equivalent of CheckResourceAttrNotEqual.
+// It validates that a resource attribute does not equal the specified value.
+func StateCheckResourceAttrNotEqual(resName string, path, notValue string) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			value, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			strValue := fmt.Sprintf("%v", value)
+			if strValue == notValue {
+				resp.Error = fmt.Errorf("attribute was equal")
+			}
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
 }
 
 func CheckResourceAttrListContains(resName, path, desiredValue string) resource.TestCheckFunc {
@@ -318,6 +430,40 @@ func CheckResourceAttrListContains(resName, path, desiredValue string) resource.
 	}
 }
 
+// StateCheckResourceAttrListContains is the StateCheck equivalent of CheckResourceAttrListContains.
+// It validates that a resource attribute list contains the specified value.
+func StateCheckResourceAttrListContains(resName, path, desiredValue string) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			listVal, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			list, ok := listVal.([]interface{})
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s is not a list", path)
+				return
+			}
+
+			for _, item := range list {
+				if fmt.Sprintf("%v", item) == desiredValue {
+					return
+				}
+			}
+
+			resp.Error = fmt.Errorf("Desired value %s not found in resource attribute %s", desiredValue, path)
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
+}
+
 func LoopThroughStringList(resName, path string, listValidateFunc ListAttrValidateFunc) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resName]
@@ -339,6 +485,42 @@ func LoopThroughStringList(resName, path string, listValidateFunc ListAttrValida
 
 		return nil
 	}
+}
+
+// StateCheckLoopThroughStringList is the StateCheck equivalent of LoopThroughStringList.
+// It iterates through a list attribute and runs a validation function on each element.
+// The callback receives the resource name, element path, and the tfjson state resources.
+func StateCheckLoopThroughStringList(resName, path string, listValidateFunc StateListAttrValidateFunc) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			listVal, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			list, ok := listVal.([]interface{})
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s is not a list", path)
+				return
+			}
+
+			for i := range list {
+				elemPath := path + "." + strconv.Itoa(i)
+				err := listValidateFunc(resName, elemPath, req.State.Values.RootModule.Resources)
+				if err != nil {
+					resp.Error = fmt.Errorf("Value not found: %s", err)
+					return
+				}
+			}
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
 }
 
 // CheckListContains checks whether a state list or set contains a given value
@@ -367,6 +549,40 @@ func CheckListContains(resName, path, value string) resource.TestCheckFunc {
 
 		return fmt.Errorf("failed to find value %s in %s", value, path)
 	}
+}
+
+// StateCheckListContains is the StateCheck equivalent of CheckListContains.
+// It checks whether a state list or set attribute contains a given value.
+func StateCheckListContains(resName, path, value string) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address != resName {
+				continue
+			}
+
+			listVal, ok := rc.AttributeValues[path]
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s does not exist", path)
+				return
+			}
+
+			list, ok := listVal.([]interface{})
+			if !ok {
+				resp.Error = fmt.Errorf("attribute %s is not a list", path)
+				return
+			}
+
+			for _, item := range list {
+				if fmt.Sprintf("%v", item) == value {
+					return
+				}
+			}
+
+			resp.Error = fmt.Errorf("failed to find value %s in %s", value, path)
+			return
+		}
+		resp.Error = fmt.Errorf("Not found: %s", resName)
+	})
 }
 
 func CheckLKEClusterDestroy(s *terraform.State) error {
@@ -466,6 +682,51 @@ func CheckVolumeExists(name string, volume *linodego.Volume) resource.TestCheckF
 	}
 }
 
+// StateCheckVolumeExists is the StateCheck equivalent of CheckVolumeExists.
+// It verifies that a Linode Volume resource exists by querying the Linode API
+// using the resource ID from the tfjson state and populates the provided volume pointer.
+func StateCheckVolumeExists(name string, volume *linodego.Volume) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client, err := GetTestClient()
+		if err != nil {
+			resp.Error = err
+			return
+		}
+
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("No ID is set for %s", name)
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("Not found: %s", name)
+			return
+		}
+
+		id, err := strconv.Atoi(resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error parsing %v to int", resourceID)
+			return
+		}
+
+		found, err := client.GetVolume(context.Background(), id)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error retrieving state of Volume %s: %s", name, err)
+			return
+		}
+
+		*volume = *found
+	})
+}
+
 func CheckFirewallExists(name string, firewall *linodego.Firewall) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client, err := GetTestClient()
@@ -496,6 +757,51 @@ func CheckFirewallExists(name string, firewall *linodego.Firewall) resource.Test
 
 		return nil
 	}
+}
+
+// StateCheckFirewallExists is the StateCheck equivalent of CheckFirewallExists.
+// It verifies that a Linode Firewall resource exists by querying the Linode API
+// using the resource ID from the tfjson state and populates the provided firewall pointer.
+func StateCheckFirewallExists(name string, firewall *linodego.Firewall) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client, err := GetTestClient()
+		if err != nil {
+			resp.Error = err
+			return
+		}
+
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("No ID is set for %s", name)
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("Not found: %s", name)
+			return
+		}
+
+		id, err := strconv.Atoi(resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error parsing %v to int", resourceID)
+			return
+		}
+
+		found, err := client.GetFirewall(context.Background(), id)
+		if err != nil {
+			resp.Error = fmt.Errorf("Error retrieving state of Firewall %s: %s", name, err)
+			return
+		}
+
+		*firewall = *found
+	})
 }
 
 func CheckEventAbsent(name string, entityType linodego.EntityType, action linodego.EventAction) resource.TestCheckFunc {
@@ -530,6 +836,53 @@ func CheckEventAbsent(name string, entityType linodego.EntityType, action linode
 
 		return nil
 	}
+}
+
+// StateCheckEventAbsent is the StateCheck equivalent of CheckEventAbsent.
+// It verifies that no event of the specified entity type and action exists
+// for the resource by querying the Linode API.
+func StateCheckEventAbsent(name string, entityType linodego.EntityType, action linodego.EventAction) statecheck.StateCheck {
+	return CustomStateCheck(func(ctx context.Context, req statecheck.CheckStateRequest, resp *statecheck.CheckStateResponse) {
+		client, err := GetTestClient()
+		if err != nil {
+			resp.Error = err
+			return
+		}
+
+		var resourceID string
+		for _, rc := range req.State.Values.RootModule.Resources {
+			if rc.Address == name {
+				idVal, ok := rc.AttributeValues["id"]
+				if !ok {
+					resp.Error = fmt.Errorf("no ID is set for %s", name)
+					return
+				}
+				resourceID = idVal.(string)
+				break
+			}
+		}
+
+		if resourceID == "" {
+			resp.Error = fmt.Errorf("not found: %s", name)
+			return
+		}
+
+		id, err := strconv.Atoi(resourceID)
+		if err != nil {
+			resp.Error = fmt.Errorf("error parsing %v to int", resourceID)
+			return
+		}
+
+		event, err := helper.GetLatestEvent(context.Background(), client, id, entityType, action)
+		if err != nil {
+			resp.Error = err
+			return
+		}
+
+		if event != nil {
+			resp.Error = fmt.Errorf("event exists: %d", event.ID)
+		}
+	})
 }
 
 func AnyOfTestCheckFunc(funcs ...resource.TestCheckFunc) resource.TestCheckFunc {
