@@ -26,20 +26,58 @@ func TestAccDataSourceVPCSubnet_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, subnetLabel, "10.0.0.0/24", testRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "label"),
-					resource.TestCheckResourceAttrSet(resourceName, "ipv4"),
-					resource.TestCheckResourceAttrSet(resourceName, "created"),
-					resource.TestCheckResourceAttrSet(resourceName, "updated"),
-
-					resource.TestCheckResourceAttr(resourceName, "linodes.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "linodes.0.id"),
-					resource.TestCheckResourceAttr(resourceName, "linodes.0.interfaces.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "linodes.0.interfaces.0.id"),
-					resource.TestCheckResourceAttr(resourceName, "linodes.0.interfaces.0.active", "false"),
-
-					resource.TestCheckResourceAttr(resourceName, "databases.#", "0"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("label"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("ipv4"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("created"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("updated"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("linodes"),
+						knownvalue.ListSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces"),
+						knownvalue.ListSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces").AtSliceIndex(0).AtMapKey("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("linodes").AtSliceIndex(0).AtMapKey("interfaces").AtSliceIndex(0).AtMapKey("active"),
+						knownvalue.StringExact("false"),
+					),
+					statecheck.ExpectKnownValue(
+						resourceName,
+						tfjsonpath.New("databases"),
+						knownvalue.ListSizeExact(0),
+					),
+				},
 			},
 		},
 	})
