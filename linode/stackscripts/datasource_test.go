@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/stackscripts/tmpl"
 )
@@ -42,55 +45,138 @@ func TestAccDataSourceStackscripts_basic_smoke(t *testing.T) {
 		ProtoV6ProviderFactories: acceptance.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tmpl.DataBasic(t, stackScriptName, basicStackScript),
-				Check: resource.ComposeTestCheckFunc(
-					validateStackscript(resourceName, stackScriptName),
-				),
+				Config:            tmpl.DataBasic(t, stackScriptName, basicStackScript),
+				ConfigStateChecks: validateStackscriptStateChecks(resourceName, stackScriptName),
 			},
 			{
-				Config: tmpl.DataSubString(t, stackScriptName, basicStackScript),
-				Check: resource.ComposeTestCheckFunc(
-					validateStackscript(resourceName, stackScriptName),
-				),
+				Config:            tmpl.DataSubString(t, stackScriptName, basicStackScript),
+				ConfigStateChecks: validateStackscriptStateChecks(resourceName, stackScriptName),
 			},
 			{
 				Config: tmpl.DataLatest(t, stackScriptName, basicStackScript),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "stackscripts.#", "1"),
-					validateStackscript(resourceName, stackScriptName),
+				ConfigStateChecks: append(
+					[]statecheck.StateCheck{
+						statecheck.ExpectKnownValue(
+							resourceName,
+							tfjsonpath.New("stackscripts"),
+							knownvalue.ListSizeExact(1),
+						),
+					},
+					validateStackscriptStateChecks(resourceName, stackScriptName)...,
 				),
 			},
 			{
 				Config: tmpl.DataClientFilter(t, stackScriptName, basicStackScript),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "stackscripts.#", "1"),
-					validateStackscript(resourceName, stackScriptName),
+				ConfigStateChecks: append(
+					[]statecheck.StateCheck{
+						statecheck.ExpectKnownValue(
+							resourceName,
+							tfjsonpath.New("stackscripts"),
+							knownvalue.ListSizeExact(1),
+						),
+					},
+					validateStackscriptStateChecks(resourceName, stackScriptName)...,
 				),
 			},
 		},
 	})
 }
 
-func validateStackscript(resourceName, stackScriptName string) resource.TestCheckFunc {
-	return resource.ComposeTestCheckFunc(
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.id"),
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.deployments_active"),
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.deployments_total"),
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.username"),
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.created"),
-		resource.TestCheckResourceAttrSet(resourceName, "stackscripts.0.updated"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.label", stackScriptName),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.description", "test"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.is_public", "false"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.rev_note", "initial"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.script", basicStackScript),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.images.#", "2"),
-		acceptance.CheckListContains(resourceName, "stackscripts.0.images", "linode/ubuntu24.04"),
-		acceptance.CheckListContains(resourceName, "stackscripts.0.images", "linode/ubuntu22.04"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.user_defined_fields.#", "1"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.user_defined_fields.0.name", "name"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.user_defined_fields.0.label", "Your name"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.user_defined_fields.0.default", "user"),
-		resource.TestCheckResourceAttr(resourceName, "stackscripts.0.user_defined_fields.0.example", "Linus Torvalds"),
-	)
+func validateStackscriptStateChecks(resourceName, stackScriptName string) []statecheck.StateCheck {
+	return []statecheck.StateCheck{
+		// TestCheckResourceAttrSet → ExpectKnownValue with NotNull()
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("id"),
+			knownvalue.NotNull(),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("deployments_active"),
+			knownvalue.NotNull(),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("deployments_total"),
+			knownvalue.NotNull(),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("username"),
+			knownvalue.NotNull(),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("created"),
+			knownvalue.NotNull(),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("updated"),
+			knownvalue.NotNull(),
+		),
+		// TestCheckResourceAttr → ExpectKnownValue with StringExact()
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("label"),
+			knownvalue.StringExact(stackScriptName),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("description"),
+			knownvalue.StringExact("test"),
+		),
+		// is_public is BoolAttribute in schema → use knownvalue.Bool(false)
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("is_public"),
+			knownvalue.Bool(false),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("rev_note"),
+			knownvalue.StringExact("initial"),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("script"),
+			knownvalue.StringExact(basicStackScript),
+		),
+		// images is schema.SetAttribute → use SetSizeExact for ".#" count check
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("images"),
+			knownvalue.SetSizeExact(2),
+		),
+		// Custom check: CheckListContains → StateCheckListContains
+		acceptance.StateCheckListContains(resourceName, "stackscripts.0.images", "linode/ubuntu24.04"),
+		acceptance.StateCheckListContains(resourceName, "stackscripts.0.images", "linode/ubuntu22.04"),
+		// user_defined_fields is schema.ListAttribute → use ListSizeExact for ".#" count
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("user_defined_fields"),
+			knownvalue.ListSizeExact(1),
+		),
+		// Nested UDF attributes: "stackscripts.0.user_defined_fields.0.X"
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("user_defined_fields").AtSliceIndex(0).AtMapKey("name"),
+			knownvalue.StringExact("name"),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("user_defined_fields").AtSliceIndex(0).AtMapKey("label"),
+			knownvalue.StringExact("Your name"),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("user_defined_fields").AtSliceIndex(0).AtMapKey("default"),
+			knownvalue.StringExact("user"),
+		),
+		statecheck.ExpectKnownValue(
+			resourceName,
+			tfjsonpath.New("stackscripts").AtSliceIndex(0).AtMapKey("user_defined_fields").AtSliceIndex(0).AtMapKey("example"),
+			knownvalue.StringExact("Linus Torvalds"),
+		),
+	}
 }
