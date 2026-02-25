@@ -11,7 +11,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/linodego"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/helper"
@@ -47,15 +50,15 @@ func TestAccResourceLock_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.Basic(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckInstanceExists(instanceName, &instance),
-					resource.TestCheckResourceAttrSet(lockName, "id"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_id"),
-					resource.TestCheckResourceAttr(lockName, "entity_type", "linode"),
-					resource.TestCheckResourceAttr(lockName, "lock_type", "cannot_delete"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_label"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_url"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(instanceName, &instance),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_type"), knownvalue.StringExact("linode")),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("lock_type"), knownvalue.StringExact("cannot_delete")),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_url"), knownvalue.NotNull()),
+				},
 			},
 			{
 				ResourceName:      lockName,
@@ -84,15 +87,15 @@ func TestAccResourceLock_withSubresources(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.WithSubresources(t, label, testRegion),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					acceptance.CheckInstanceExists(instanceName, &instance),
-					resource.TestCheckResourceAttrSet(lockName, "id"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_id"),
-					resource.TestCheckResourceAttr(lockName, "entity_type", "linode"),
-					resource.TestCheckResourceAttr(lockName, "lock_type", "cannot_delete_with_subresources"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_label"),
-					resource.TestCheckResourceAttrSet(lockName, "entity_url"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					acceptance.StateCheckInstanceExists(instanceName, &instance),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_type"), knownvalue.StringExact("linode")),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("lock_type"), knownvalue.StringExact("cannot_delete_with_subresources")),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_label"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(lockName, tfjsonpath.New("entity_url"), knownvalue.NotNull()),
+				},
 			},
 		},
 	})
