@@ -9,6 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/producerimagesharegroupmembers/tmpl"
 )
@@ -64,25 +67,25 @@ func TestAccDataSourceImageShareGroupMembers_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, shareGroupLabel, tokenLabel, memberLabel),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dsByLabel, "members.#", "1"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "members.0.sharegroup_id"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "members.0.token_uuid"),
-					resource.TestCheckResourceAttrSet(dsByLabel, "members.0.status"),
-					resource.TestCheckResourceAttr(dsByLabel, "members.0.label", memberLabel),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("members"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("sharegroup_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("token_uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByLabel, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(memberLabel)),
 
-					resource.TestCheckResourceAttr(dsByTokenUUID, "members.#", "1"),
-					resource.TestCheckResourceAttrSet(dsByTokenUUID, "members.0.sharegroup_id"),
-					resource.TestCheckResourceAttrSet(dsByTokenUUID, "members.0.token_uuid"),
-					resource.TestCheckResourceAttrSet(dsByTokenUUID, "members.0.status"),
-					resource.TestCheckResourceAttr(dsByTokenUUID, "members.0.label", memberLabel),
+					statecheck.ExpectKnownValue(dsByTokenUUID, tfjsonpath.New("members"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(dsByTokenUUID, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("sharegroup_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByTokenUUID, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("token_uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByTokenUUID, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByTokenUUID, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(memberLabel)),
 
-					acceptance.CheckResourceAttrGreaterThan(dsByStatus, "members.#", 0),
-					resource.TestCheckResourceAttrSet(dsByStatus, "members.0.sharegroup_id"),
-					resource.TestCheckResourceAttrSet(dsByStatus, "members.0.token_uuid"),
-					resource.TestCheckResourceAttrSet(dsByStatus, "members.0.status"),
-					resource.TestCheckResourceAttr(dsByStatus, "members.0.label", memberLabel),
-				),
+					acceptance.StateCheckResourceAttrGreaterThan(dsByStatus, "members.#", 0),
+					statecheck.ExpectKnownValue(dsByStatus, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("sharegroup_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByStatus, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("token_uuid"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByStatus, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("status"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(dsByStatus, tfjsonpath.New("members").AtSliceIndex(0).AtMapKey("label"), knownvalue.StringExact(memberLabel)),
+				},
 			},
 		},
 	})
