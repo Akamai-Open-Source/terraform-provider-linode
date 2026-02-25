@@ -3,12 +3,14 @@
 package nbconfigs_test
 
 import (
-	"fmt"
 	"log"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/linode/terraform-provider-linode/v3/linode/acceptance"
 	"github.com/linode/terraform-provider-linode/v3/linode/nbconfigs/tmpl"
 )
@@ -33,32 +35,32 @@ func TestAccDataSourceNodeBalancerConfigs_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: tmpl.DataBasic(t, nbLabel, nbRegion),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "nodebalancer_configs.#", "2"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.id"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.nodebalancer_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.protocol"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.proxy_protocol"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.port"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.check_interval"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.check_passive"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.udp_check_port"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.udp_session_timeout"),
-					resource.TestCheckResourceAttrSet(resourceName, "nodebalancer_configs.0.cipher_suite"),
-					resource.TestCheckNoResourceAttr(resourceName, "nodebalancer_configs.0.ssl_common"),
-					resource.TestCheckNoResourceAttr(resourceName, "nodebalancer_configs.0.ssl_ciphersuite"),
-					resource.TestCheckResourceAttr(resourceName, "nodebalancer_configs.0.node_status.0.up", "0"),
-					resource.TestCheckResourceAttr(resourceName, "nodebalancer_configs.0.node_status.0.down", "0"),
-					resource.TestCheckNoResourceAttr(resourceName, "nodebalancer_configs.0.ssl_cert"),
-					resource.TestCheckNoResourceAttr(resourceName, "nodebalancer_configs.0.ssl_key"),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs"), knownvalue.ListSizeExact(2)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("nodebalancer_id"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("protocol"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("proxy_protocol"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("port"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("check_interval"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("check_passive"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("udp_check_port"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("udp_session_timeout"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("cipher_suite"), knownvalue.NotNull()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("ssl_common"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("ssl_ciphersuite"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("node_status").AtSliceIndex(0).AtMapKey("up"), knownvalue.Int64Exact(0)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("node_status").AtSliceIndex(0).AtMapKey("down"), knownvalue.Int64Exact(0)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("ssl_cert"), knownvalue.Null()),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("ssl_key"), knownvalue.Null()),
+				},
 			},
 			{
 				Config: tmpl.DataFilter(t, nbLabel, nbRegion, port),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "nodebalancer_configs.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "nodebalancer_configs.0.port", fmt.Sprint(port)),
-				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs"), knownvalue.ListSizeExact(1)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("nodebalancer_configs").AtSliceIndex(0).AtMapKey("port"), knownvalue.Int64Exact(int64(port))),
+				},
 			},
 		},
 	})
